@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Calendar,
   ChevronDown,
@@ -35,7 +35,25 @@ export default function UploadPage() {
     Record<string, { action: "create" | "map"; targetId?: number }>
   >({});
 
+  const [lastUpload, setLastUpload] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchLastUpload = async () => {
+    try {
+      const res = await fetch("/api/last-upload");
+      if (res.ok) {
+        const data = await res.json();
+        setLastUpload(data.lastUpload);
+      }
+    } catch (e) {
+      console.error("Failed to fetch last upload", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchLastUpload();
+  }, []);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -141,6 +159,7 @@ export default function UploadPage() {
         );
         setFile(null);
         setShowMappingModal(false);
+        fetchLastUpload(); // Refresh the last upload date
       } else {
         alert("Gagal memproses berkas: " + result.error);
       }
@@ -345,7 +364,15 @@ export default function UploadPage() {
               UNGGAHAN TERAKHIR
             </span>
             <span className="text-[15px] font-bold text-[#1a1f36]">
-              Belum ada unggahan
+              {lastUpload
+                ? new Intl.DateTimeFormat("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }).format(new Date(lastUpload))
+                : "Belum ada unggahan"}
             </span>
           </div>
         </div>

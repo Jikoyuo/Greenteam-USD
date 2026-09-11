@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useState, useRef } from "react";
 import {
   Calendar,
   ChevronDown,
@@ -9,13 +11,154 @@ import {
   Download,
   Sparkles,
   History,
+  FileText,
+  X,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function UploadPage() {
+  const [file, setFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [period, setPeriod] = useState("2026-05");
+  const campus = "Kampus 3 USD";
+
+  const [showMappingModal, setShowMappingModal] = useState(false);
+  const [unrecognizedLocations, setUnrecognizedLocations] = useState<string[]>(
+    [],
+  );
+  const [existingLocations, setExistingLocations] = useState<
+    { id: number; name: string }[]
+  >([]);
+  const [mappings, setMappings] = useState<
+    Record<string, { action: "create" | "map"; targetId?: number }>
+  >({});
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      validateAndSetFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      validateAndSetFile(e.target.files[0]);
+    }
+  };
+
+  const validateAndSetFile = (selectedFile: File) => {
+    const validTypes = [
+      "text/csv",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-excel",
+    ];
+    const validExtensions = [".csv", ".xlsx", ".xls"];
+    const fileName = selectedFile.name.toLowerCase();
+    const isValidExtension = validExtensions.some((ext) =>
+      fileName.endsWith(ext),
+    );
+    const maxSize = 25 * 1024 * 1024;
+
+    if (!isValidExtension && !validTypes.includes(selectedFile.type)) {
+      alert("Format file tidak didukung. Harap unggah file .CSV atau .XLSX");
+      return;
+    }
+
+    if (selectedFile.size > maxSize) {
+      alert("Ukuran file melebihi batas maksimal 25 MB.");
+      return;
+    }
+
+    setFile(selectedFile);
+  };
+
+  const handleBoxClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const removeFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const submitFile = async (currentMappings = {}) => {
+    if (!file) {
+      alert("Pilih berkas terlebih dahulu!");
+      return;
+    }
+    if (!period) {
+      alert("Pilih periode audit terlebih dahulu!");
+      return;
+    }
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("period", period);
+    formData.append("campus", campus);
+    formData.append("mappings", JSON.stringify(currentMappings));
+
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.requireConfirmation) {
+        setUnrecognizedLocations(result.unrecognizedLocations);
+        setExistingLocations(result.existingLocations);
+
+        const initialMappings: any = {};
+        result.unrecognizedLocations.forEach((loc: string) => {
+          initialMappings[loc] = { action: "create" };
+        });
+        setMappings(initialMappings);
+        setShowMappingModal(true);
+      } else if (response.ok) {
+        alert(
+          "Yeay! Berkas berhasil diproses dan data telah disimpan ke Database Supabase!",
+        );
+        setFile(null);
+        setShowMappingModal(false);
+      } else {
+        alert("Gagal memproses berkas: " + result.error);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Terjadi kesalahan saat mengunggah berkas.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleUploadClick = () => {
+    submitFile({});
+  };
+
   return (
     <div className="min-h-screen bg-[#f8f9fb] text-slate-800 font-sans p-6 md:p-12 flex justify-center">
       <div className="max-w-[800px] w-full">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-[#1a1f36] mb-3">
             Upload Waste Audit Data
@@ -27,7 +170,7 @@ export default function UploadPage() {
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 mb-6 relative z-0">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div>
               <div className="flex justify-between items-center mb-2">
@@ -38,12 +181,27 @@ export default function UploadPage() {
                   Bulan Aktif
                 </span>
               </div>
-              <div className="flex items-center justify-between bg-[#f4f6fb] px-4 py-3.5 rounded-xl cursor-pointer hover:bg-[#ebedf4] transition-colors">
-                <div className="flex items-center gap-3 text-slate-700">
-                  <Calendar className="w-5 h-5 text-emerald-700" />
-                  <span className="font-semibold">September 2026</span>
+              <div className="relative">
+                <input
+                  type="month"
+                  value={period}
+                  onChange={(e) => setPeriod(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                <div className="flex items-center justify-between bg-[#f4f6fb] px-4 py-3.5 rounded-xl cursor-pointer hover:bg-[#ebedf4] transition-colors relative z-0">
+                  <div className="flex items-center gap-3 text-slate-700">
+                    <Calendar className="w-5 h-5 text-emerald-700" />
+                    <span className="font-semibold">
+                      {period
+                        ? new Date(period + "-01").toLocaleDateString("id-ID", {
+                            month: "long",
+                            year: "numeric",
+                          })
+                        : "Pilih Bulan"}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-5 h-5 text-slate-400" />
                 </div>
-                <ChevronDown className="w-5 h-5 text-slate-400" />
               </div>
               <div className="flex items-center gap-1.5 mt-2 text-slate-500 text-[13px]">
                 <HelpCircle className="w-4 h-4" />
@@ -58,12 +216,11 @@ export default function UploadPage() {
                   <span className="text-red-500">*</span>
                 </label>
               </div>
-              <div className="flex items-center justify-between bg-[#f4f6fb] px-4 py-3.5 rounded-xl cursor-pointer hover:bg-[#ebedf4] transition-colors">
+              <div className="flex items-center justify-between bg-[#f4f6fb] px-4 py-3.5 rounded-xl cursor-not-allowed opacity-80">
                 <div className="flex items-center gap-3 text-slate-700">
                   <Building2 className="w-5 h-5 text-emerald-700" />
-                  <span className="font-semibold">Kampus 3 (Paingan)</span>
+                  <span className="font-semibold">{campus}</span>
                 </div>
-                <ChevronDown className="w-5 h-5 text-slate-400" />
               </div>
               <div className="flex items-center gap-1.5 mt-2 text-slate-500 text-[13px]">
                 <Building2 className="w-4 h-4" />
@@ -82,33 +239,71 @@ export default function UploadPage() {
               </span>
             </div>
 
-            <div className="bg-[#f4f6fb] rounded-2xl p-10 flex flex-col items-center justify-center border-2 border-dashed border-transparent hover:border-slate-200 transition-colors cursor-pointer mb-6">
-              <div className="bg-white p-4 rounded-2xl shadow-sm mb-6">
-                <FileUp
-                  className="w-8 h-8 text-emerald-700"
-                  strokeWidth={2.5}
-                />
-              </div>
+            <div
+              className={`bg-[#f4f6fb] rounded-2xl p-10 flex flex-col items-center justify-center border-2 border-dashed transition-colors cursor-pointer mb-6 ${isDragging ? "border-emerald-500 bg-[#ebf0f8]" : "border-transparent hover:border-slate-300"}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={handleBoxClick}
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                onChange={handleFileChange}
+              />
 
-              <h3 className="text-[17px] font-semibold text-[#1a1f36] mb-3 text-center">
-                Tarik & lepas berkas CSV di sini, atau klik untuk memilih
-              </h3>
+              {!file ? (
+                <>
+                  <div className="bg-white p-4 rounded-2xl shadow-sm mb-6 pointer-events-none">
+                    <FileUp
+                      className="w-8 h-8 text-emerald-700"
+                      strokeWidth={2.5}
+                    />
+                  </div>
 
-              <div className="flex items-center gap-2 text-[15px] text-slate-500 mb-8">
-                <span>Mendukung format</span>
-                <span className="bg-[#e9ecf5] text-[#1a1f36] font-bold text-xs px-2 py-1 rounded-md tracking-wide">
-                  .CSV
-                </span>
-                <span>atau</span>
-                <span className="bg-[#e9ecf5] text-[#1a1f36] font-bold text-xs px-2 py-1 rounded-md tracking-wide">
-                  .XLSX
-                </span>
-              </div>
+                  <h3 className="text-[17px] font-semibold text-[#1a1f36] mb-3 text-center pointer-events-none">
+                    Tarik & lepas berkas CSV di sini, atau klik untuk memilih
+                  </h3>
 
-              <button className="flex items-center gap-2 bg-white text-[#1a1f36] font-semibold px-5 py-3 rounded-xl shadow-sm hover:shadow text-[15px] transition-shadow">
-                <FolderOpen className="w-5 h-5 text-emerald-700" />
-                Pilih Berkas dari Komputer
-              </button>
+                  <div className="flex items-center gap-2 text-[15px] text-slate-500 mb-8 pointer-events-none">
+                    <span>Mendukung format</span>
+                    <span className="bg-[#e9ecf5] text-[#1a1f36] font-bold text-xs px-2 py-1 rounded-md tracking-wide">
+                      .CSV
+                    </span>
+                    <span>atau</span>
+                    <span className="bg-[#e9ecf5] text-[#1a1f36] font-bold text-xs px-2 py-1 rounded-md tracking-wide">
+                      .XLSX
+                    </span>
+                  </div>
+
+                  <button className="flex items-center gap-2 bg-white text-[#1a1f36] font-semibold px-5 py-3 rounded-xl shadow-sm hover:shadow text-[15px] transition-shadow pointer-events-none">
+                    <FolderOpen className="w-5 h-5 text-emerald-700" />
+                    Pilih Berkas dari Komputer
+                  </button>
+                </>
+              ) : (
+                <div
+                  className="flex flex-col items-center bg-white p-6 rounded-xl shadow-sm border border-slate-100 w-full max-w-sm"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <FileText className="w-12 h-12 text-emerald-600 mb-3" />
+                  <span className="font-semibold text-slate-800 text-center break-all">
+                    {file.name}
+                  </span>
+                  <span className="text-sm text-slate-500 mt-1">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </span>
+                  <button
+                    onClick={removeFile}
+                    className="mt-5 flex items-center gap-1.5 text-[14px] px-4 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-semibold transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                    Batal Pilih
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center mb-8">
@@ -121,9 +316,22 @@ export default function UploadPage() {
               </a>
             </div>
 
-            <button className="w-full bg-[#006837] hover:bg-[#005a30] text-white font-semibold text-[16px] py-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm">
-              <Sparkles className="w-5 h-5" />
-              Unggah Data
+            <button
+              onClick={handleUploadClick}
+              disabled={isUploading || !file}
+              className="w-full bg-[#006837] hover:bg-[#005a30] disabled:bg-[#006837]/60 disabled:cursor-not-allowed text-white font-semibold text-[16px] py-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Memproses...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  Unggah Data
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -137,11 +345,103 @@ export default function UploadPage() {
               UNGGAHAN TERAKHIR
             </span>
             <span className="text-[15px] font-bold text-[#1a1f36]">
-              31 Agu 2026 • 17:40 WIB
+              Belum ada unggahan
             </span>
           </div>
         </div>
       </div>
+
+      {showMappingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-100 flex items-start gap-4">
+              <div className="bg-amber-100 p-3 rounded-full text-amber-600 shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">
+                  Lokasi Asing Terdeteksi
+                </h2>
+                <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                  Kami menemukan <b>{unrecognizedLocations.length} lokasi</b> di
+                  dalam file Anda yang tidak ada di database <b>{campus}</b>.
+                  Apakah ini lokasi baru atau hanya salah ketik (typo)?
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto bg-slate-50 flex-1">
+              <div className="space-y-4">
+                {unrecognizedLocations.map((loc) => (
+                  <div
+                    key={loc}
+                    className="bg-white p-4 rounded-xl shadow-sm border border-slate-200"
+                  >
+                    <span className="block font-semibold text-slate-700 mb-2">
+                      {loc}
+                    </span>
+                    <select
+                      className="w-full bg-[#f4f6fb] border border-slate-200 rounded-lg px-3 py-2.5 text-[14.5px] text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
+                      value={
+                        mappings[loc]?.action === "create"
+                          ? "create"
+                          : `map-${mappings[loc]?.targetId}`
+                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "create") {
+                          setMappings((prev) => ({
+                            ...prev,
+                            [loc]: { action: "create" },
+                          }));
+                        } else {
+                          const targetId = parseInt(val.replace("map-", ""));
+                          setMappings((prev) => ({
+                            ...prev,
+                            [loc]: { action: "map", targetId },
+                          }));
+                        }
+                      }}
+                    >
+                      <option value="create">
+                        ✨ Buat sebagai Lokasi Baru
+                      </option>
+                      <optgroup label="Atau Map ke Lokasi yang Ada (Typo):">
+                        {existingLocations.map((ex) => (
+                          <option key={ex.id} value={`map-${ex.id}`}>
+                            ↪ Cocokkan dengan: {ex.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-slate-100 flex justify-end gap-3 bg-white">
+              <button
+                onClick={() => setShowMappingModal(false)}
+                className="px-5 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Batal Unggah
+              </button>
+              <button
+                onClick={() => submitFile(mappings)}
+                disabled={isUploading}
+                className="px-5 py-2.5 rounded-xl font-semibold text-white bg-emerald-700 hover:bg-emerald-800 transition-colors flex items-center gap-2 shadow-sm"
+              >
+                {isUploading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
+                Setuju & Lanjutkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

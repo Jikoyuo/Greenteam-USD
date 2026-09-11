@@ -220,7 +220,7 @@ export default function DashboardPage() {
               <span className="text-[10px] text-slate-500 font-semibold leading-none mb-1">
                 PERIODE
               </span>
-              <div className="w-32">
+              <div className="w-44">
                 <Dropdown
                   value={period}
                   onChange={setPeriod}
@@ -238,7 +238,7 @@ export default function DashboardPage() {
               <span className="text-[10px] text-slate-500 font-semibold leading-none mb-1">
                 LOKASI
               </span>
-              <div className="w-36">
+              <div className="w-56">
                 <Dropdown
                   value={campus}
                   onChange={setCampus}

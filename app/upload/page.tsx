@@ -10,20 +10,27 @@ import {
   FileUp,
   FolderOpen,
   Download,
-  Sparkles,
   History,
   FileText,
   X,
   Loader2,
   AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 
+import { Dropdown } from "@/components/ui/Dropdown";
+import { useToast } from "@/components/ui/ToastProvider";
+
 export default function UploadPage() {
+  const { success, error: showError } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  
   const [period, setPeriod] = useState("2026-05");
-  const campus = "Kampus 3 USD";
+  const [campus, setCampus] = useState("Kampus 3 USD");
+  const [campuses, setCampuses] = useState<{ id_campus: number; campus_name: string }[]>([]);
+  const [periodOptions, setPeriodOptions] = useState<{label: string, value: string}[]>([]);
 
   const [showMappingModal, setShowMappingModal] = useState(false);
   const [unrecognizedLocations, setUnrecognizedLocations] = useState<string[]>(
@@ -52,8 +59,33 @@ export default function UploadPage() {
     }
   };
 
+  const fetchCampuses = async () => {
+    try {
+      const res = await fetch("/api/campuses");
+      if (res.ok) {
+        const data = await res.json();
+        setCampuses(data);
+        if (data.length > 0) setCampus(data[0].campus_name);
+      }
+    } catch (e) {
+      console.error("Failed to fetch campuses", e);
+    }
+  };
+
   useEffect(() => {
     fetchLastUpload();
+    fetchCampuses();
+
+    const options = [];
+    // Generate 12 months (6 months before and 6 months after current date)
+    const currentDate = new Date();
+    for (let i = -6; i <= 6; i++) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const label = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+      options.push({ value, label });
+    }
+    setPeriodOptions(options);
   }, []);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -95,12 +127,12 @@ export default function UploadPage() {
     const maxSize = 25 * 1024 * 1024;
 
     if (!isValidExtension && !validTypes.includes(selectedFile.type)) {
-      alert("Format file tidak didukung. Harap unggah file .CSV atau .XLSX");
+      showError("Format file tidak didukung. Harap unggah file .CSV atau .XLSX");
       return;
     }
 
     if (selectedFile.size > maxSize) {
-      alert("Ukuran file melebihi batas maksimal 25 MB.");
+      showError("Ukuran file melebihi batas maksimal 25 MB.");
       return;
     }
 
@@ -121,11 +153,15 @@ export default function UploadPage() {
 
   const submitFile = async (currentMappings = {}) => {
     if (!file) {
-      alert("Pilih berkas terlebih dahulu!");
+      showError("Pilih berkas terlebih dahulu!");
       return;
     }
     if (!period) {
-      alert("Pilih periode audit terlebih dahulu!");
+      showError("Pilih periode audit terlebih dahulu!");
+      return;
+    }
+    if (!campus) {
+      showError("Pilih lokasi kampus terlebih dahulu!");
       return;
     }
 
@@ -155,18 +191,16 @@ export default function UploadPage() {
         setMappings(initialMappings);
         setShowMappingModal(true);
       } else if (response.ok) {
-        alert(
-          "Yeay! Berkas berhasil diproses dan data telah disimpan ke Database Supabase!",
-        );
+        success("Yeay! Berkas berhasil diproses dan data telah disimpan ke Database Supabase!");
         setFile(null);
         setShowMappingModal(false);
         fetchLastUpload();
       } else {
-        alert("Gagal memproses berkas: " + result.error);
+        showError("Gagal memproses berkas: " + result.error);
       }
     } catch (error) {
       console.error(error);
-      alert("Terjadi kesalahan saat mengunggah berkas.");
+      showError("Terjadi kesalahan saat mengunggah berkas.");
     } finally {
       setIsUploading(false);
     }
@@ -210,26 +244,12 @@ export default function UploadPage() {
                 </span>
               </div>
               <div className="relative">
-                <input
-                  type="month"
+                <Dropdown
                   value={period}
-                  onChange={(e) => setPeriod(e.target.value)}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  onChange={setPeriod}
+                  options={periodOptions}
+                  icon={Calendar}
                 />
-                <div className="flex items-center justify-between bg-[#f4f6fb] px-4 py-3.5 rounded-xl cursor-pointer hover:bg-[#ebedf4] transition-colors relative z-0">
-                  <div className="flex items-center gap-3 text-slate-700">
-                    <Calendar className="w-5 h-5 text-emerald-700" />
-                    <span className="font-semibold">
-                      {period
-                        ? new Date(period + "-01").toLocaleDateString("id-ID", {
-                            month: "long",
-                            year: "numeric",
-                          })
-                        : "Pilih Bulan"}
-                    </span>
-                  </div>
-                  <ChevronDown className="w-5 h-5 text-slate-400" />
-                </div>
               </div>
               <div className="flex items-center gap-1.5 mt-2 text-slate-500 text-[13px]">
                 <HelpCircle className="w-4 h-4" />
@@ -244,11 +264,15 @@ export default function UploadPage() {
                   <span className="text-red-500">*</span>
                 </label>
               </div>
-              <div className="flex items-center justify-between bg-[#f4f6fb] px-4 py-3.5 rounded-xl cursor-not-allowed opacity-80">
-                <div className="flex items-center gap-3 text-slate-700">
-                  <Building2 className="w-5 h-5 text-emerald-700" />
-                  <span className="font-semibold">{campus}</span>
-                </div>
+              <div className="relative z-20">
+                <Dropdown
+                  value={campus}
+                  onChange={setCampus}
+                  options={campuses.map(c => ({ value: c.campus_name, label: c.campus_name }))}
+                  icon={Building2}
+                  disabled={campuses.length === 0}
+                  placeholder="Memuat..."
+                />
               </div>
               <div className="flex items-center gap-1.5 mt-2 text-slate-500 text-[13px]">
                 <Building2 className="w-4 h-4" />
@@ -355,10 +379,7 @@ export default function UploadPage() {
                   Memproses...
                 </>
               ) : (
-                <>
-                  <Sparkles className="w-5 h-5" />
-                  Unggah Data
-                </>
+                <>Unggah Data</>
               )}
             </button>
           </div>
@@ -439,10 +460,8 @@ export default function UploadPage() {
                         }
                       }}
                     >
-                      <option value="create">
-                        ✨ Buat sebagai Lokasi Baru
-                      </option>
-                      <optgroup label="Atau Map ke Lokasi yang Ada (Typo):">
+                      <option value="create">Buat sebagai Lokasi Baru</option>
+                      <optgroup label="Atau Cocokkan dengan Lokasi yang Ada:">
                         {existingLocations.map((ex) => (
                           <option key={ex.id} value={`map-${ex.id}`}>
                             ↪ Cocokkan dengan: {ex.name}
@@ -470,7 +489,7 @@ export default function UploadPage() {
                 {isUploading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Sparkles className="w-4 h-4" />
+                  <CheckCircle2 className="w-4 h-4" />
                 )}
                 Setuju & Lanjutkan
               </button>

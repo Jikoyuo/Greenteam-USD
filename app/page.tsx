@@ -14,6 +14,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { Dropdown } from "@/components/ui/Dropdown";
 
 interface DashboardData {
   summary: {
@@ -41,7 +42,14 @@ interface DashboardData {
 
 export default function DashboardPage() {
   const [period, setPeriod] = useState("2026-05");
-  const [campus, setCampus] = useState("Kampus 3");
+  const [campus, setCampus] = useState("Kampus 3 USD");
+  const [campuses, setCampuses] = useState<
+    { id_campus: number; campus_name: string }[]
+  >([]);
+  const [periodOptions, setPeriodOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
@@ -49,7 +57,41 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchDashboardData();
     fetchLastUpdate();
-  }, [period]);
+  }, [period, campus, campuses]);
+
+  useEffect(() => {
+    fetchCampuses();
+
+    const options = [];
+    const currentDate = new Date();
+    for (let i = -6; i <= 6; i++) {
+      const date = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + i,
+        1,
+      );
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      const label = date.toLocaleDateString("id-ID", {
+        month: "long",
+        year: "numeric",
+      });
+      options.push({ value, label });
+    }
+    setPeriodOptions(options);
+  }, []);
+
+  const fetchCampuses = async () => {
+    try {
+      const res = await fetch("/api/campuses");
+      if (res.ok) {
+        const json = await res.json();
+        setCampuses(json);
+        if (json.length > 0) {
+          setCampus(json[0].campus_name);
+        }
+      }
+    } catch (e) {}
+  };
 
   const fetchLastUpdate = async () => {
     try {
@@ -75,8 +117,11 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // campus_id=1 as default
-      const res = await fetch(`/api/dashboard?period=${period}&campus_id=1`);
+      const selectedCampus = campuses.find((c) => c.campus_name === campus);
+      const campusId = selectedCampus ? selectedCampus.id_campus : 1;
+      const res = await fetch(
+        `/api/dashboard?period=${period}&campus_id=${campusId}`,
+      );
       if (res.ok) {
         const json = await res.json();
         setData(json);
@@ -97,7 +142,7 @@ export default function DashboardPage() {
       ? "text-emerald-700"
       : isNeutral
         ? "text-slate-600"
-        : "text-emerald-700"; // Usually less waste is better, but diversion rate more is better. For simplicity, we just use the UI color. Wait, the SS shows +2.1% green, -3.4% green (because less waste is good). So we just force the color to green/emerald-700 and bg-emerald-100 if it's "good". Let's just follow the screenshot: all badges are green text/bg except if it's explicitly bad. Actually, let's just use emerald for now as per SS.
+        : "text-emerald-700";
 
     return (
       <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
@@ -171,40 +216,41 @@ export default function DashboardPage() {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center border border-slate-200 rounded-lg px-3 py-2 bg-white">
             <Calendar className="w-4 h-4 text-slate-400 mr-2" />
-            <div className="flex flex-col mr-6">
+            <div className="flex flex-col mr-6 z-20">
               <span className="text-[10px] text-slate-500 font-semibold leading-none mb-1">
                 PERIODE
               </span>
-              <select
-                value={period}
-                onChange={(e) => setPeriod(e.target.value)}
-                className="text-sm font-semibold text-slate-800 bg-transparent outline-none cursor-pointer leading-none"
-              >
-                <option value="2026-05">Mei 2026</option>
-                <option value="2026-06">Juni 2026</option>
-                <option value="2026-07">Juli 2026</option>
-                <option value="2026-08">Agustus 2026</option>
-                <option value="2026-09">September 2026</option>
-              </select>
+              <div className="w-32">
+                <Dropdown
+                  value={period}
+                  onChange={setPeriod}
+                  options={periodOptions}
+                  className="!px-0 !py-0 !bg-transparent text-sm shadow-none"
+                  placeholder="Pilih"
+                />
+              </div>
             </div>
-            <ChevronDown className="w-4 h-4 text-slate-400" />
           </div>
 
           <div className="flex items-center border border-slate-200 rounded-lg px-3 py-2 bg-white">
             <Building2 className="w-4 h-4 text-slate-400 mr-2" />
-            <div className="flex flex-col mr-6">
+            <div className="flex flex-col mr-6 z-20">
               <span className="text-[10px] text-slate-500 font-semibold leading-none mb-1">
                 LOKASI
               </span>
-              <select
-                value={campus}
-                onChange={(e) => setCampus(e.target.value)}
-                className="text-sm font-semibold text-slate-800 bg-transparent outline-none cursor-pointer leading-none"
-              >
-                <option value="Kampus 3">Kampus 3</option>
-              </select>
+              <div className="w-36">
+                <Dropdown
+                  value={campus}
+                  onChange={setCampus}
+                  options={campuses.map((c) => ({
+                    value: c.campus_name,
+                    label: c.campus_name,
+                  }))}
+                  className="!px-0 !py-0 !bg-transparent text-sm shadow-none"
+                  placeholder="Memuat..."
+                />
+              </div>
             </div>
-            <ChevronDown className="w-4 h-4 text-slate-400" />
           </div>
 
           <button className="bg-[#006837] hover:bg-[#005a30] text-white px-4 py-2.5 rounded-lg font-semibold text-sm flex items-center gap-2 transition-colors">

@@ -26,11 +26,15 @@ export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  
+
   const [period, setPeriod] = useState("2026-05");
   const [campus, setCampus] = useState("Kampus 3 USD");
-  const [campuses, setCampuses] = useState<{ id_campus: number; campus_name: string }[]>([]);
-  const [periodOptions, setPeriodOptions] = useState<{label: string, value: string}[]>([]);
+  const [campuses, setCampuses] = useState<
+    { id_campus: number; campus_name: string }[]
+  >([]);
+  const [periodOptions, setPeriodOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
 
   const [showMappingModal, setShowMappingModal] = useState(false);
   const [unrecognizedLocations, setUnrecognizedLocations] = useState<string[]>(
@@ -80,9 +84,16 @@ export default function UploadPage() {
     // Generate 12 months (6 months before and 6 months after current date)
     const currentDate = new Date();
     for (let i = -6; i <= 6; i++) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
-      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      const label = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+      const date = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + i,
+        1,
+      );
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      const label = date.toLocaleDateString("id-ID", {
+        month: "long",
+        year: "numeric",
+      });
       options.push({ value, label });
     }
     setPeriodOptions(options);
@@ -127,7 +138,9 @@ export default function UploadPage() {
     const maxSize = 25 * 1024 * 1024;
 
     if (!isValidExtension && !validTypes.includes(selectedFile.type)) {
-      showError("Format file tidak didukung. Harap unggah file .CSV atau .XLSX");
+      showError(
+        "Format file tidak didukung. Harap unggah file .CSV atau .XLSX",
+      );
       return;
     }
 
@@ -191,7 +204,9 @@ export default function UploadPage() {
         setMappings(initialMappings);
         setShowMappingModal(true);
       } else if (response.ok) {
-        success("Yeay! Berkas berhasil diproses dan data telah disimpan ke Database Supabase!");
+        success(
+          "Yeay! Berkas berhasil diproses dan data telah disimpan ke Database Supabase!",
+        );
         setFile(null);
         setShowMappingModal(false);
         fetchLastUpload();
@@ -268,7 +283,10 @@ export default function UploadPage() {
                 <Dropdown
                   value={campus}
                   onChange={setCampus}
-                  options={campuses.map(c => ({ value: c.campus_name, label: c.campus_name }))}
+                  options={campuses.map((c) => ({
+                    value: c.campus_name,
+                    label: c.campus_name,
+                  }))}
                   icon={Building2}
                   disabled={campuses.length === 0}
                   placeholder="Memuat..."
@@ -356,16 +374,6 @@ export default function UploadPage() {
                   </button>
                 </div>
               )}
-            </div>
-
-            <div className="flex items-center mb-8">
-              <a
-                href="#"
-                className="flex items-center gap-2 text-[14.5px] font-semibold text-[#006699] hover:text-[#005580] transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Unduh contoh template audit (.CSV) standar
-              </a>
             </div>
 
             <button

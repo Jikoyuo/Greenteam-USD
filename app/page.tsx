@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import {
   Calendar,
   ChevronDown,
@@ -178,15 +179,20 @@ export default function UploadPage() {
   return (
     <div className="min-h-screen bg-[#f8f9fb] text-slate-800 font-sans p-6 md:p-12 flex justify-center">
       <div className="max-w-[800px] w-full">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#1a1f36] mb-3">
-            Upload Waste Audit Data
-          </h1>
-          <p className="text-slate-500 text-[15px] leading-relaxed">
-            Unggah berkas log penimbangan dan audit harian untuk memproses
-            pembaruan analitik dashboard secara otomatis dengan toleransi
-            anomali cerdas.
-          </p>
+        <div className="mb-8 flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-[#1a1f36] mb-3">
+              Upload Waste Audit Data
+            </h1>
+            <p className="text-slate-500 text-[15px] leading-relaxed">
+              Unggah berkas log penimbangan dan audit harian untuk memproses
+              pembaruan analitik dashboard secara otomatis dengan toleransi
+              anomali cerdas.
+            </p>
+          </div>
+          <Link href="/dashboard" className="bg-[#e6f0ff] text-[#006699] hover:bg-[#d0e3ff] transition-colors font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-2 whitespace-nowrap">
+            Lihat Dashboard
+          </Link>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 mb-6 relative z-0">

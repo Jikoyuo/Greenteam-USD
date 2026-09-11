@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# AI & Editor Files
+AGENTS.md
+CLAUDE.md
+.cursorrules
+.aider*
+.vscode/
+.idea/
+*.swp
+*.swo

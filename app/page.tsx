@@ -289,12 +289,15 @@ export default function DashboardPage() {
       name: "Organik / Pangan",
       [formatMonth(data.compareComposition.period)]: data.compareComposition.organic,
       [formatMonth(period)]: data.composition.organic,
-    },
+    }
+    /*
+    ,
     {
       name: "Residual",
       [formatMonth(data.compareComposition.period)]: data.compareComposition.residual,
       [formatMonth(period)]: data.composition.residual,
     }
+    */
   ] : [];
 
   const handleDownloadPDF = async () => {

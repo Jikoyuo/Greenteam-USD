@@ -28,7 +28,10 @@ export default function UploadPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
-  const [period, setPeriod] = useState("2026-05");
+  const [period, setPeriod] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [campus, setCampus] = useState("Kampus 3 USD");
   const [campuses, setCampuses] = useState<
     { id_campus: number; campus_name: string }[]

@@ -88,7 +88,10 @@ interface DashboardData {
 
 export default function DashboardPage() {
   const [showFilters, setShowFilters] = useState(false);
-  const [period, setPeriod] = useState("2026-05");
+  const [period, setPeriod] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [comparePeriod, setComparePeriod] = useState("");
   const [campus, setCampus] = useState("Kampus 3 USD");
   const [campuses, setCampuses] = useState<
@@ -118,16 +121,24 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchCampuses();
-
-    const currentDate = new Date();
-    const prevDate = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() - 1,
-      1,
-    );
-    const prevValue = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
-    setComparePeriod(prevValue);
   }, []);
+
+  useEffect(() => {
+    if (!period) return;
+    const [yearStr, monthStr] = period.split("-");
+    let year = parseInt(yearStr);
+    let month = parseInt(monthStr);
+
+    if (month === 1) {
+      month = 12;
+      year -= 1;
+    } else {
+      month -= 1;
+    }
+
+    const prevValue = `${year}-${String(month).padStart(2, "0")}`;
+    setComparePeriod(prevValue);
+  }, [period]);
 
   const fetchCampuses = async () => {
     try {
@@ -168,7 +179,9 @@ export default function DashboardPage() {
     try {
       const selectedCampus = campuses.find((c) => c.campus_name === campus);
       const campusId = selectedCampus ? selectedCampus.id_campus : 1;
-      const compareQuery = comparePeriod ? `&compare_period=${comparePeriod}` : '';
+      const compareQuery = comparePeriod
+        ? `&compare_period=${comparePeriod}`
+        : "";
       const res = await fetch(
         `/api/dashboard?period=${period}${compareQuery}&campus_id=${campusId}`,
       );
@@ -188,7 +201,7 @@ export default function DashboardPage() {
   const SummaryCard = ({ title, value, unit, change, icon, type }: any) => {
     const isPositive = change > 0;
     const isNeutral = change === 0;
-    
+
     let badgeBg = "bg-slate-100";
     let badgeText = "text-slate-600";
 
@@ -271,26 +284,33 @@ export default function DashboardPage() {
     if (!periodStr) return "";
     const [year, month] = periodStr.split("-");
     const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-    return date.toLocaleDateString("id-ID", { month: "short", year: "numeric" });
+    return date.toLocaleDateString("id-ID", {
+      month: "short",
+      year: "numeric",
+    });
   };
 
-  const comparisonData = data ? [
-    {
-      name: "Plastik",
-      [formatMonth(data.compareComposition.period)]: data.compareComposition.plastic,
-      [formatMonth(period)]: data.composition.plastic,
-    },
-    {
-      name: "Kertas & Kardus",
-      [formatMonth(data.compareComposition.period)]: data.compareComposition.paper,
-      [formatMonth(period)]: data.composition.paper,
-    },
-    {
-      name: "Organik / Pangan",
-      [formatMonth(data.compareComposition.period)]: data.compareComposition.organic,
-      [formatMonth(period)]: data.composition.organic,
-    }
-    /*
+  const comparisonData = data
+    ? [
+        {
+          name: "Plastik",
+          [formatMonth(data.compareComposition.period)]:
+            data.compareComposition.plastic,
+          [formatMonth(period)]: data.composition.plastic,
+        },
+        {
+          name: "Kertas & Kardus",
+          [formatMonth(data.compareComposition.period)]:
+            data.compareComposition.paper,
+          [formatMonth(period)]: data.composition.paper,
+        },
+        {
+          name: "Organik / Pangan",
+          [formatMonth(data.compareComposition.period)]:
+            data.compareComposition.organic,
+          [formatMonth(period)]: data.composition.organic,
+        },
+        /*
     ,
     {
       name: "Residual",
@@ -298,35 +318,36 @@ export default function DashboardPage() {
       [formatMonth(period)]: data.composition.residual,
     }
     */
-  ] : [];
+      ]
+    : [];
 
   const handleDownloadPDF = async () => {
     setIsDownloadingPdf(true);
     try {
       const element = document.getElementById("dashboard-content");
       if (!element) return;
-      
+
       const htmlToImage = await import("html-to-image");
       const { jsPDF } = await import("jspdf");
 
       const imgData = await htmlToImage.toPng(element, {
         quality: 1.0,
         pixelRatio: 2,
-        backgroundColor: '#f8f9fb',
+        backgroundColor: "#f8f9fb",
         width: element.scrollWidth,
         height: element.scrollHeight,
         style: {
-          transform: 'scale(1)',
-          transformOrigin: 'top left',
-          margin: '0',
-        }
+          transform: "scale(1)",
+          transformOrigin: "top left",
+          margin: "0",
+        },
       });
-      
+
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const imgProps = pdf.getImageProperties(imgData);
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      
+
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       pdf.save(`Smart-Waste-Dashboard-${period}.pdf`);
     } catch (error) {
@@ -342,9 +363,13 @@ export default function DashboardPage() {
       const ExcelJS = await import("exceljs");
       const workbook = new (ExcelJS.Workbook || ExcelJS.default.Workbook)();
 
-      const generateSheet = (wsName: string, titlePeriod: string, dataset: any[]) => {
+      const generateSheet = (
+        wsName: string,
+        titlePeriod: string,
+        dataset: any[],
+      ) => {
         // ExcelJS sometimes fails if worksheet name is longer than 31 chars or has invalid chars
-        const safeName = wsName.replace(/[\\\/\?\*\[\]]/g, '').substring(0, 31);
+        const safeName = wsName.replace(/[\\\/\?\*\[\]]/g, "").substring(0, 31);
         const ws = workbook.addWorksheet(safeName);
 
         // Title
@@ -353,42 +378,83 @@ export default function DashboardPage() {
         titleCell.value = `DATA AUDIT SAMPAH KAMPUS (Zero Waste Campus Project)`;
         titleCell.font = { bold: true, size: 14 };
         titleCell.alignment = { horizontal: "center" };
-        titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2CC" } };
+        titleCell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF2CC" },
+        };
 
         ws.mergeCells("A2:K2");
         const subtitleCell = ws.getCell("A2");
         subtitleCell.value = `Sampling Date: ${titlePeriod}`;
         subtitleCell.font = { bold: true, size: 12 };
         subtitleCell.alignment = { horizontal: "center" };
-        subtitleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2CC" } };
+        subtitleCell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF2CC" },
+        };
 
         ws.addRow([]); // empty row 3
 
         // Headers row 4
-        ws.addRow(["Day", "Date", "Location", "Weight of Hard Plastic (Kg)", "Weight", "Weight", "Residu", "Residu", "Total", "Total"]);
-        ws.addRow(["", "", "", "", "", "Paper (Kg)", "Food Waste (Kg)", "Kg", "Volume (L)", "Waste (Kg)", "Volume (L)"]);
+        ws.addRow([
+          "Day",
+          "Date",
+          "Location",
+          "Weight of Hard Plastic (Kg)",
+          "Weight",
+          "Weight",
+          "Residu",
+          "Residu",
+          "Total",
+          "Total",
+        ]);
+        ws.addRow([
+          "",
+          "",
+          "",
+          "",
+          "",
+          "Paper (Kg)",
+          "Food Waste (Kg)",
+          "Kg",
+          "Volume (L)",
+          "Waste (Kg)",
+          "Volume (L)",
+        ]);
 
         // Merge header cells vertically
-        ['A', 'B', 'C', 'D', 'E'].forEach(col => {
+        ["A", "B", "C", "D", "E"].forEach((col) => {
           ws.mergeCells(`${col}4:${col}5`);
         });
 
         const setHeaderStyle = (cell: any, fgColor: string) => {
           cell.font = { bold: true };
           cell.alignment = { horizontal: "center", vertical: "middle" };
-          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fgColor } };
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: fgColor },
+          };
           cell.border = {
-            top: { style: 'thin' }, left: { style: 'thin' },
-            bottom: { style: 'thin' }, right: { style: 'thin' }
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
           };
         };
 
         // Header Colors
-        ['A4', 'B4', 'C4', 'D4', 'E4', 'K4', 'K5'].forEach(c => setHeaderStyle(ws.getCell(c), "FFFFFF00")); // Yellow
-        ['F4', 'F5'].forEach(c => setHeaderStyle(ws.getCell(c), "FFCCFFFF")); // Light Blue
-        ['G4', 'G5'].forEach(c => setHeaderStyle(ws.getCell(c), "FFCCFFCC")); // Light Green
-        ['H4', 'H5'].forEach(c => setHeaderStyle(ws.getCell(c), "FFFFCC99")); // Orange
-        ['I4', 'I5', 'J4', 'J5'].forEach(c => setHeaderStyle(ws.getCell(c), "FFFF99CC")); // Pink
+        ["A4", "B4", "C4", "D4", "E4", "K4", "K5"].forEach((c) =>
+          setHeaderStyle(ws.getCell(c), "FFFFFF00"),
+        ); // Yellow
+        ["F4", "F5"].forEach((c) => setHeaderStyle(ws.getCell(c), "FFCCFFFF")); // Light Blue
+        ["G4", "G5"].forEach((c) => setHeaderStyle(ws.getCell(c), "FFCCFFCC")); // Light Green
+        ["H4", "H5"].forEach((c) => setHeaderStyle(ws.getCell(c), "FFFFCC99")); // Orange
+        ["I4", "I5", "J4", "J5"].forEach((c) =>
+          setHeaderStyle(ws.getCell(c), "FFFF99CC"),
+        ); // Pink
 
         // Data Rows
         let totalHardPlastic = 0;
@@ -399,7 +465,15 @@ export default function DashboardPage() {
         let totalWasteKg = 0;
         let totalWasteVol = 0;
 
-        const dayNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+        const dayNames = [
+          "Minggu",
+          "Senin",
+          "Selasa",
+          "Rabu",
+          "Kamis",
+          "Jumat",
+          "Sabtu",
+        ];
 
         dataset.forEach((row) => {
           const d = new Date(row.date);
@@ -427,52 +501,96 @@ export default function DashboardPage() {
           totalWasteVol += row.totalVol;
 
           const setRowBg = (colNum: number, color: string) => {
-            dataRow.getCell(colNum).fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
-            dataRow.getCell(colNum).border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+            dataRow.getCell(colNum).fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: color },
+            };
+            dataRow.getCell(colNum).border = {
+              top: { style: "thin" },
+              bottom: { style: "thin" },
+              left: { style: "thin" },
+              right: { style: "thin" },
+            };
           };
 
-          [1, 2, 3, 4, 11].forEach(c => setRowBg(c, "FFFFFF00")); // Yellow
-          [5, 6].forEach(c => setRowBg(c, "FFCCFFFF")); // Blue
+          [1, 2, 3, 4, 11].forEach((c) => setRowBg(c, "FFFFFF00")); // Yellow
+          [5, 6].forEach((c) => setRowBg(c, "FFCCFFFF")); // Blue
           setRowBg(7, "FFCCFFCC"); // Green
           setRowBg(8, "FFFFCC99"); // Orange
-          [9, 10].forEach(c => setRowBg(c, "FFFF99CC")); // Pink
+          [9, 10].forEach((c) => setRowBg(c, "FFFF99CC")); // Pink
         });
 
         // Total Row
-        const totalRow = ws.addRow(["TOTAL", "", "", "", totalHardPlastic, totalPaper, totalFood, totalResidualKg, totalResidualVol, totalWasteKg, totalWasteVol]);
+        const totalRow = ws.addRow([
+          "TOTAL",
+          "",
+          "",
+          "",
+          totalHardPlastic,
+          totalPaper,
+          totalFood,
+          totalResidualKg,
+          totalResidualVol,
+          totalWasteKg,
+          totalWasteVol,
+        ]);
         ws.mergeCells(`A${totalRow.number}:D${totalRow.number}`);
-        
+
         for (let i = 1; i <= 11; i++) {
-           const cell = totalRow.getCell(i);
-           cell.font = { bold: true };
-           cell.alignment = { horizontal: "center", vertical: "middle" };
-           cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
-           cell.border = { top: { style: 'thick' }, bottom: { style: 'thick' }, left: { style: 'thin' }, right: { style: 'thin' } };
+          const cell = totalRow.getCell(i);
+          cell.font = { bold: true };
+          cell.alignment = { horizontal: "center", vertical: "middle" };
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFFFFF00" },
+          };
+          cell.border = {
+            top: { style: "thick" },
+            bottom: { style: "thick" },
+            left: { style: "thin" },
+            right: { style: "thin" },
+          };
         }
 
         // Column widths
-        ws.getColumn('A').width = 10;
-        ws.getColumn('B').width = 15;
-        ws.getColumn('C').width = 30;
-        ws.getColumn('D').width = 15;
-        ws.getColumn('E').width = 25;
-        ws.getColumn('F').width = 15;
-        ws.getColumn('G').width = 15;
-        ws.getColumn('H').width = 15;
-        ws.getColumn('I').width = 15;
-        ws.getColumn('J').width = 15;
-        ws.getColumn('K').width = 15;
+        ws.getColumn("A").width = 10;
+        ws.getColumn("B").width = 15;
+        ws.getColumn("C").width = 30;
+        ws.getColumn("D").width = 15;
+        ws.getColumn("E").width = 25;
+        ws.getColumn("F").width = 15;
+        ws.getColumn("G").width = 15;
+        ws.getColumn("H").width = 15;
+        ws.getColumn("I").width = 15;
+        ws.getColumn("J").width = 15;
+        ws.getColumn("K").width = 15;
       };
 
-      generateSheet(`Periode ${formatMonth(period)}`, formatMonth(period), data.rawData);
-      
-      if (data.compareComposition && data.compareRawData && data.compareRawData.length > 0) {
-        generateSheet(`Banding ${formatMonth(data.compareComposition.period)}`, formatMonth(data.compareComposition.period), data.compareRawData);
+      generateSheet(
+        `Periode ${formatMonth(period)}`,
+        formatMonth(period),
+        data.rawData,
+      );
+
+      if (
+        data.compareComposition &&
+        data.compareRawData &&
+        data.compareRawData.length > 0
+      ) {
+        generateSheet(
+          `Banding ${formatMonth(data.compareComposition.period)}`,
+          formatMonth(data.compareComposition.period),
+          data.compareRawData,
+        );
       }
 
       // Generate and download
       const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -506,7 +624,9 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <div className={`${showFilters ? "flex" : "hidden"} md:flex flex-col md:flex-row flex-wrap items-stretch md:items-center gap-3 w-full md:w-auto mt-4 md:mt-0`}>
+        <div
+          className={`${showFilters ? "flex" : "hidden"} md:flex flex-col md:flex-row flex-wrap items-stretch md:items-center gap-3 w-full md:w-auto mt-4 md:mt-0`}
+        >
           <div className="flex items-center border border-slate-200 rounded-lg px-3 py-2 bg-white w-full md:w-auto">
             <Calendar className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
             <div className="flex flex-col mr-2 flex-grow">
@@ -514,10 +634,7 @@ export default function DashboardPage() {
                 PERIODE
               </span>
               <div className="w-full md:w-36">
-                <MonthPicker
-                  value={period}
-                  onChange={setPeriod}
-                />
+                <MonthPicker value={period} onChange={setPeriod} />
               </div>
             </div>
           </div>
@@ -558,8 +675,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="relative w-full md:w-auto" onClick={(e) => e.stopPropagation()}>
-            <button 
+          <div
+            className="relative w-full md:w-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
               onClick={() => setShowDownloadMenu(!showDownloadMenu)}
               disabled={isDownloadingPdf}
               className="bg-[#006837] hover:bg-[#005a30] text-white px-4 py-3 md:py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors w-full md:w-auto"
@@ -570,7 +690,9 @@ export default function DashboardPage() {
                 <Download className="w-4 h-4" />
               )}
               {isDownloadingPdf ? "Memproses PDF..." : "Download Report"}
-              <ChevronDown className={`w-4 h-4 transition-transform ${showDownloadMenu ? "rotate-180" : ""}`} />
+              <ChevronDown
+                className={`w-4 h-4 transition-transform ${showDownloadMenu ? "rotate-180" : ""}`}
+              />
             </button>
 
             {showDownloadMenu && (
@@ -586,8 +708,12 @@ export default function DashboardPage() {
                     <FileText className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-slate-700">Format PDF</div>
-                    <div className="text-[10px] text-slate-500">Tampilan dashboard visual</div>
+                    <div className="text-sm font-semibold text-slate-700">
+                      Format PDF
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      Tampilan dashboard visual
+                    </div>
                   </div>
                 </button>
                 <button
@@ -601,8 +727,12 @@ export default function DashboardPage() {
                     <FileSpreadsheet className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-slate-700">Format Excel</div>
-                    <div className="text-[10px] text-slate-500">Data mentah lengkap</div>
+                    <div className="text-sm font-semibold text-slate-700">
+                      Format Excel
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      Data mentah lengkap
+                    </div>
                   </div>
                 </button>
               </div>
@@ -611,7 +741,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div id="dashboard-content" className="max-w-[1200px] mx-auto px-6 md:px-12 mt-8">
+      <div
+        id="dashboard-content"
+        className="max-w-[1200px] mx-auto px-6 md:px-12 mt-8"
+      >
         <div className="bg-white rounded-2xl p-6 md:p-8 mb-6 border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -814,28 +947,65 @@ export default function DashboardPage() {
                     Perbandingan Penyusun Diversion Rate
                   </h3>
                   <p className="text-sm text-slate-500 mt-1">
-                    Komparasi berat sampah (kg) yang didaur ulang antara dua periode
+                    Komparasi berat sampah (kg) yang didaur ulang antara dua
+                    periode
                   </p>
                 </div>
                 <Info className="w-5 h-5 text-slate-400" />
               </div>
-              
+
               <div className="h-[350px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={comparisonData}
                     margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dx={-10} />
-                    <Tooltip 
-                      cursor={{fill: '#f8fafc'}}
-                      contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="#e2e8f0"
                     />
-                    <Legend iconType="circle" wrapperStyle={{paddingTop: '20px'}} />
-                    <Bar dataKey={data ? formatMonth(data.compareComposition.period) : "Bulan Lalu"} fill="#94a3b8" radius={[4, 4, 0, 0]} name={`Periode ${data ? formatMonth(data.compareComposition.period) : ''}`} />
-                    <Bar dataKey={data ? formatMonth(period) : "Bulan Ini"} fill="#059669" radius={[4, 4, 0, 0]} name={`Periode ${data ? formatMonth(period) : ''}`} />
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: "#64748b", fontSize: 12 }}
+                      dy={10}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: "#64748b", fontSize: 12 }}
+                      dx={-10}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "#f8fafc" }}
+                      contentStyle={{
+                        borderRadius: "8px",
+                        border: "none",
+                        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                      }}
+                    />
+                    <Legend
+                      iconType="circle"
+                      wrapperStyle={{ paddingTop: "20px" }}
+                    />
+                    <Bar
+                      dataKey={
+                        data
+                          ? formatMonth(data.compareComposition.period)
+                          : "Bulan Lalu"
+                      }
+                      fill="#94a3b8"
+                      radius={[4, 4, 0, 0]}
+                      name={`Periode ${data ? formatMonth(data.compareComposition.period) : ""}`}
+                    />
+                    <Bar
+                      dataKey={data ? formatMonth(period) : "Bulan Ini"}
+                      fill="#059669"
+                      radius={[4, 4, 0, 0]}
+                      name={`Periode ${data ? formatMonth(period) : ""}`}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

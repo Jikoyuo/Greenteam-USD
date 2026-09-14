@@ -68,6 +68,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let population = 1000;
+    let samplingDays = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      if (!row || !Array.isArray(row) || row.length === 0) continue;
+      
+      const rowStr = row.map(c => String(c).toLowerCase()).join('|');
+      
+      if (rowStr.includes('populasi')) {
+        const nums = row.map(c => Number(c)).filter(n => !isNaN(n) && n !== 0);
+        if (nums.length > 0) population = nums[nums.length - 1];
+      }
+      
+      if (rowStr.includes('jumlah hari sampling')) {
+        const nums = row.map(c => Number(c)).filter(n => !isNaN(n) && n !== 0);
+        if (nums.length > 0) samplingDays = nums[nums.length - 1];
+      }
+    }
+
     const headers = data[4];
 
     const dateIdx = headers.indexOf("Date");
@@ -212,6 +232,27 @@ export async function POST(req: NextRequest) {
     if (upsertError) {
       console.error("Upsert Error:", upsertError);
       throw upsertError;
+    }
+
+    // Insert into AuditMetadata
+    if (samplingDays > 0) {
+      const { error: metaError } = await supabase
+        .from("AuditMetadata")
+        .upsert(
+          {
+            id_campus: campusId,
+            period: period,
+            population: population,
+            sampling_days: samplingDays
+          },
+          { onConflict: "id_campus,period" }
+        );
+
+      if (metaError) {
+        console.error("Metadata Upsert Error:", metaError);
+        // We don't throw here to avoid failing the whole upload if metadata fails,
+        // but it's important to log.
+      }
     }
 
     return NextResponse.json({

@@ -56,6 +56,21 @@ export async function GET(req: NextRequest) {
       throw error;
     }
 
+    const { data: metaData } = await supabase
+      .from("AuditMetadata")
+      .select("*")
+      .eq("id_campus", campusId)
+      .in("period", [period, prevPeriod]);
+
+    const currMeta = metaData?.find(m => m.period === period);
+    const prevMeta = metaData?.find(m => m.period === prevPeriod);
+
+    const currPop = currMeta?.population || POPULATION_ESTIMATE;
+    const currDays = currMeta?.sampling_days || daysInMonth;
+
+    const prevPop = prevMeta?.population || POPULATION_ESTIMATE;
+    const prevDays = prevMeta?.sampling_days || getDaysInMonth(prevPeriod);
+
     const currentData = auditData.filter((d) => d.period === period);
     const prevData = auditData.filter((d) => d.period === prevPeriod);
 
@@ -77,7 +92,7 @@ export async function GET(req: NextRequest) {
 
     // Per Capita = (TotalWaste * 1000) / (Populasi * Hari) -> grams/person/day
     const currPerCapita =
-      (currTotalManaged * 1000) / (POPULATION_ESTIMATE * daysInMonth);
+      (currTotalManaged * 1000) / (currPop * currDays);
 
     // --- PREVIOUS PERIOD METRICS ---
     const prevPlastic = sumMetric(prevData, "hard_plastic_kg");
@@ -92,8 +107,7 @@ export async function GET(req: NextRequest) {
     const prevDiversionRate =
       prevTotalManaged > 0 ? (prevRecyclables / prevTotalManaged) * 100 : 0;
     const prevPerCapita =
-      (prevTotalManaged * 1000) /
-      (POPULATION_ESTIMATE * getDaysInMonth(prevPeriod));
+      (prevTotalManaged * 1000) / (prevPop * prevDays);
 
     // --- CALCULATE MoM % CHANGES ---
     const calcChange = (curr: number, prev: number) => {

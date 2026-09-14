@@ -188,11 +188,27 @@ export default function DashboardPage() {
   const SummaryCard = ({ title, value, unit, change, icon, type }: any) => {
     const isPositive = change > 0;
     const isNeutral = change === 0;
-    const changeColor = isPositive
-      ? "text-emerald-700"
-      : isNeutral
-        ? "text-slate-600"
-        : "text-emerald-700";
+    
+    let badgeBg = "bg-slate-100";
+    let badgeText = "text-slate-600";
+
+    if (change > 0) {
+      if (type === "diversionRate") {
+        badgeBg = "bg-emerald-100";
+        badgeText = "text-emerald-700";
+      } else {
+        badgeBg = "bg-red-100";
+        badgeText = "text-red-700";
+      }
+    } else if (change < 0) {
+      if (type === "diversionRate") {
+        badgeBg = "bg-red-100";
+        badgeText = "text-red-700";
+      } else {
+        badgeBg = "bg-emerald-100";
+        badgeText = "text-emerald-700";
+      }
+    }
 
     return (
       <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
@@ -206,7 +222,7 @@ export default function DashboardPage() {
         </div>
         <div>
           <span
-            className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-emerald-100 ${(type === "diversionRate" && isPositive)  ? "bg-emerald-100" : (type === "totalManaged" || type === "perCapita" || type === "residualVolume") && isPositive ? "bg-red-100" : "bg-emerald-100"}`}
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold ${badgeBg} ${badgeText}`}
           >
             {isPositive ? (
               <ArrowUp className="w-3 h-3" />

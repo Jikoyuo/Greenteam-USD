@@ -45,7 +45,7 @@ export function Dropdown({
   }, []);
 
   return (
-    <div className={`relative w-full ${className}`} ref={dropdownRef}>
+    <div className={`relative w-full ${isOpen ? 'z-50' : 'z-10'} ${className}`} ref={dropdownRef}>
       <button
         type="button"
         disabled={disabled}
@@ -70,7 +70,7 @@ export function Dropdown({
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-lg shadow-slate-200/50 border border-slate-100 py-2 max-h-60 overflow-auto animate-in fade-in zoom-in-95 duration-100 origin-top">
+        <div className="absolute z-10 w-full mt-2 bg-white rounded-xl shadow-lg shadow-slate-200/50 border border-slate-100 py-2 max-h-60 overflow-auto animate-in fade-in zoom-in-95 duration-100 origin-top">
           {options.length === 0 ? (
             <div className="px-4 py-3 text-sm text-slate-500 text-center">Data tidak tersedia</div>
           ) : (

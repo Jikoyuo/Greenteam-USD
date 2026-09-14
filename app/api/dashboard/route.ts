@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const period = searchParams.get("period") || ""; // e.g. "2026-05"
+    const comparePeriodParam = searchParams.get("compare_period");
     const campusId = parseInt(searchParams.get("campus_id") || "1");
 
     if (!period) {
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const prevPeriod = getPreviousPeriod(period);
+    const prevPeriod = comparePeriodParam || getPreviousPeriod(period);
     const daysInMonth = getDaysInMonth(period);
     const POPULATION_ESTIMATE = 1000;
 
@@ -82,6 +83,7 @@ export async function GET(req: NextRequest) {
     const prevPlastic = sumMetric(prevData, "hard_plastic_kg");
     const prevPaper = sumMetric(prevData, "paper_kg");
     const prevFood = sumMetric(prevData, "food_waste_kg");
+    const prevResidual = sumMetric(prevData, "residual_kg");
 
     const prevTotalManaged = sumMetric(prevData, "total_waste_kg");
     const prevTotalResidualVol = sumMetric(prevData, "residual_volume_l");
@@ -170,7 +172,37 @@ export async function GET(req: NextRequest) {
         residual: currResidual,
         total: currTotalManaged,
       },
+      compareComposition: {
+        period: prevPeriod,
+        plastic: prevPlastic,
+        paper: prevPaper,
+        organic: prevFood,
+        residual: prevResidual,
+        total: prevTotalManaged,
+      },
       topLocations: top5Locations,
+      rawData: currentData.map((row) => ({
+        date: row.audit_date,
+        location: row.Locations.location_name,
+        hardPlastic: Number(row.hard_plastic_kg) || 0,
+        paper: Number(row.paper_kg) || 0,
+        food: Number(row.food_waste_kg) || 0,
+        residualKg: Number(row.residual_kg) || 0,
+        residualVol: Number(row.residual_volume_l) || 0,
+        totalKg: Number(row.total_waste_kg) || 0,
+        totalVol: Number(row.total_waste_volume_l) || 0,
+      })),
+      compareRawData: prevData.map((row) => ({
+        date: row.audit_date,
+        location: row.Locations.location_name,
+        hardPlastic: Number(row.hard_plastic_kg) || 0,
+        paper: Number(row.paper_kg) || 0,
+        food: Number(row.food_waste_kg) || 0,
+        residualKg: Number(row.residual_kg) || 0,
+        residualVol: Number(row.residual_volume_l) || 0,
+        totalKg: Number(row.total_waste_kg) || 0,
+        totalVol: Number(row.total_waste_volume_l) || 0,
+      }))
     });
   } catch (error: any) {
     console.error("Dashboard API Error:", error);

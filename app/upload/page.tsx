@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { Dropdown } from "@/components/ui/Dropdown";
+import { MonthPicker } from "@/components/ui/MonthPicker";
 import { useToast } from "@/components/ui/ToastProvider";
 
 export default function UploadPage() {
@@ -31,9 +32,6 @@ export default function UploadPage() {
   const [campus, setCampus] = useState("Kampus 3 USD");
   const [campuses, setCampuses] = useState<
     { id_campus: number; campus_name: string }[]
-  >([]);
-  const [periodOptions, setPeriodOptions] = useState<
-    { label: string; value: string }[]
   >([]);
 
   const [showMappingModal, setShowMappingModal] = useState(false);
@@ -79,24 +77,6 @@ export default function UploadPage() {
   useEffect(() => {
     fetchLastUpload();
     fetchCampuses();
-
-    const options = [];
-    // Generate 12 months (6 months before and 6 months after current date)
-    const currentDate = new Date();
-    for (let i = -6; i <= 6; i++) {
-      const date = new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth() + i,
-        1,
-      );
-      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      const label = date.toLocaleDateString("id-ID", {
-        month: "long",
-        year: "numeric",
-      });
-      options.push({ value, label });
-    }
-    setPeriodOptions(options);
   }, []);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -228,12 +208,12 @@ export default function UploadPage() {
   return (
     <div className="min-h-screen bg-[#f8f9fb] text-slate-800 font-sans p-6 md:p-12 flex justify-center">
       <div className="max-w-[800px] w-full">
-        <div className="mb-8 flex justify-between items-start">
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-[#1a1f36] mb-3">
+            <h1 className="text-2xl md:text-3xl font-bold text-[#1a1f36] mb-2 md:mb-3">
               Upload Waste Audit Data
             </h1>
-            <p className="text-slate-500 text-[15px] leading-relaxed">
+            <p className="text-slate-500 text-[14px] md:text-[15px] leading-relaxed">
               Unggah berkas log penimbangan dan audit harian untuk memproses
               pembaruan analitik dashboard secara otomatis dengan toleransi
               anomali cerdas.
@@ -241,7 +221,7 @@ export default function UploadPage() {
           </div>
           <Link
             href="/"
-            className="bg-[#e6f0ff] text-[#006699] hover:bg-[#d0e3ff] transition-colors font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-2 whitespace-nowrap"
+            className="w-full md:w-auto justify-center bg-[#e6f0ff] text-[#006699] hover:bg-[#d0e3ff] transition-colors font-bold text-sm px-4 py-3 md:py-2 rounded-xl flex items-center gap-2 whitespace-nowrap"
           >
             Lihat Dashboard
           </Link>
@@ -259,11 +239,9 @@ export default function UploadPage() {
                 </span>
               </div>
               <div className="relative">
-                <Dropdown
+                <MonthPicker
                   value={period}
                   onChange={setPeriod}
-                  options={periodOptions}
-                  icon={Calendar}
                 />
               </div>
               <div className="flex items-center gap-1.5 mt-2 text-slate-500 text-[13px]">
@@ -279,7 +257,7 @@ export default function UploadPage() {
                   <span className="text-red-500">*</span>
                 </label>
               </div>
-              <div className="relative z-20">
+              <div className="relative">
                 <Dropdown
                   value={campus}
                   onChange={setCampus}
@@ -333,11 +311,11 @@ export default function UploadPage() {
                     />
                   </div>
 
-                  <h3 className="text-[17px] font-semibold text-[#1a1f36] mb-3 text-center pointer-events-none">
+                  <h3 className="text-[15px] md:text-[17px] font-semibold text-[#1a1f36] mb-3 text-center pointer-events-none">
                     Tarik & lepas berkas CSV di sini, atau klik untuk memilih
                   </h3>
 
-                  <div className="flex items-center gap-2 text-[15px] text-slate-500 mb-8 pointer-events-none">
+                  <div className="flex flex-wrap justify-center items-center gap-2 text-[14px] md:text-[15px] text-slate-500 mb-6 md:mb-8 pointer-events-none">
                     <span>Mendukung format</span>
                     <span className="bg-[#e9ecf5] text-[#1a1f36] font-bold text-xs px-2 py-1 rounded-md tracking-wide">
                       .CSV
@@ -348,7 +326,7 @@ export default function UploadPage() {
                     </span>
                   </div>
 
-                  <button className="flex items-center gap-2 bg-white text-[#1a1f36] font-semibold px-5 py-3 rounded-xl shadow-sm hover:shadow text-[15px] transition-shadow pointer-events-none">
+                  <button className="w-full md:w-auto flex items-center justify-center gap-2 bg-white text-[#1a1f36] font-semibold px-5 py-3 rounded-xl shadow-sm hover:shadow text-[14px] md:text-[15px] transition-shadow pointer-events-none">
                     <FolderOpen className="w-5 h-5 text-emerald-700" />
                     Pilih Berkas dari Komputer
                   </button>

@@ -12,9 +12,25 @@ import {
   Info,
   ArrowUpDown,
   Loader2,
+  Filter,
+  FileText,
+  FileSpreadsheet,
 } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 import { Dropdown } from "@/components/ui/Dropdown";
+import { MonthPicker } from "@/components/ui/MonthPicker";
 
 interface DashboardData {
   summary: {
@@ -30,6 +46,14 @@ interface DashboardData {
     residual: number;
     total: number;
   };
+  compareComposition: {
+    period: string;
+    plastic: number;
+    paper: number;
+    organic: number;
+    residual: number;
+    total: number;
+  };
   topLocations: {
     name: string;
     total: number;
@@ -38,46 +62,71 @@ interface DashboardData {
     dominantVal: number;
     dominantColorClass: string;
   }[];
+  rawData: {
+    date: string;
+    location: string;
+    hardPlastic: number;
+    paper: number;
+    food: number;
+    residualKg: number;
+    residualVol: number;
+    totalKg: number;
+    totalVol: number;
+  }[];
+  compareRawData: {
+    date: string;
+    location: string;
+    hardPlastic: number;
+    paper: number;
+    food: number;
+    residualKg: number;
+    residualVol: number;
+    totalKg: number;
+    totalVol: number;
+  }[];
 }
 
 export default function DashboardPage() {
+  const [showFilters, setShowFilters] = useState(false);
   const [period, setPeriod] = useState("2026-05");
+  const [comparePeriod, setComparePeriod] = useState("");
   const [campus, setCampus] = useState("Kampus 3 USD");
   const [campuses, setCampuses] = useState<
     { id_campus: number; campus_name: string }[]
-  >([]);
-  const [periodOptions, setPeriodOptions] = useState<
-    { label: string; value: string }[]
   >([]);
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
 
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  // Close download menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setShowDownloadMenu(false);
+    if (showDownloadMenu) {
+      document.addEventListener("click", handleClickOutside);
+    }
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [showDownloadMenu]);
+
   useEffect(() => {
     fetchDashboardData();
     fetchLastUpdate();
-  }, [period, campus, campuses]);
+  }, [period, comparePeriod, campus, campuses]);
 
   useEffect(() => {
     fetchCampuses();
 
-    const options = [];
     const currentDate = new Date();
-    for (let i = -6; i <= 6; i++) {
-      const date = new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth() + i,
-        1,
-      );
-      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      const label = date.toLocaleDateString("id-ID", {
-        month: "long",
-        year: "numeric",
-      });
-      options.push({ value, label });
-    }
-    setPeriodOptions(options);
+    const prevDate = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() - 1,
+      1,
+    );
+    const prevValue = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+    setComparePeriod(prevValue);
   }, []);
 
   const fetchCampuses = async () => {
@@ -119,8 +168,9 @@ export default function DashboardPage() {
     try {
       const selectedCampus = campuses.find((c) => c.campus_name === campus);
       const campusId = selectedCampus ? selectedCampus.id_campus : 1;
+      const compareQuery = comparePeriod ? `&compare_period=${comparePeriod}` : '';
       const res = await fetch(
-        `/api/dashboard?period=${period}&campus_id=${campusId}`,
+        `/api/dashboard?period=${period}${compareQuery}&campus_id=${campusId}`,
       );
       if (res.ok) {
         const json = await res.json();
@@ -135,7 +185,7 @@ export default function DashboardPage() {
     }
   };
 
-  const SummaryCard = ({ title, value, unit, change, icon }: any) => {
+  const SummaryCard = ({ title, value, unit, change, icon, type }: any) => {
     const isPositive = change > 0;
     const isNeutral = change === 0;
     const changeColor = isPositive
@@ -156,7 +206,7 @@ export default function DashboardPage() {
         </div>
         <div>
           <span
-            className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-emerald-100 text-emerald-700`}
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-emerald-100 ${(type === "diversionRate" && isPositive)  ? "bg-emerald-100" : (type === "totalManaged" || type === "perCapita" || type === "residualVolume") && isPositive ? "bg-red-100" : "bg-emerald-100"}`}
           >
             {isPositive ? (
               <ArrowUp className="w-3 h-3" />
@@ -165,7 +215,7 @@ export default function DashboardPage() {
             ) : (
               <ArrowDown className="w-3 h-3" />
             )}
-            {Math.abs(change).toFixed(1)}% vs previous month
+            {Math.abs(change).toFixed(1)}% vs periode pembanding
           </span>
         </div>
       </div>
@@ -201,44 +251,280 @@ export default function DashboardPage() {
       ]
     : [];
 
+  const formatMonth = (periodStr: string) => {
+    if (!periodStr) return "";
+    const [year, month] = periodStr.split("-");
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    return date.toLocaleDateString("id-ID", { month: "short", year: "numeric" });
+  };
+
+  const comparisonData = data ? [
+    {
+      name: "Plastik",
+      [formatMonth(data.compareComposition.period)]: data.compareComposition.plastic,
+      [formatMonth(period)]: data.composition.plastic,
+    },
+    {
+      name: "Kertas & Kardus",
+      [formatMonth(data.compareComposition.period)]: data.compareComposition.paper,
+      [formatMonth(period)]: data.composition.paper,
+    },
+    {
+      name: "Organik / Pangan",
+      [formatMonth(data.compareComposition.period)]: data.compareComposition.organic,
+      [formatMonth(period)]: data.composition.organic,
+    },
+    {
+      name: "Residual",
+      [formatMonth(data.compareComposition.period)]: data.compareComposition.residual,
+      [formatMonth(period)]: data.composition.residual,
+    }
+  ] : [];
+
+  const handleDownloadPDF = async () => {
+    setIsDownloadingPdf(true);
+    try {
+      const element = document.getElementById("dashboard-content");
+      if (!element) return;
+      
+      const htmlToImage = await import("html-to-image");
+      const { jsPDF } = await import("jspdf");
+
+      const imgData = await htmlToImage.toPng(element, {
+        quality: 1.0,
+        pixelRatio: 2,
+        backgroundColor: '#f8f9fb',
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        style: {
+          transform: 'scale(1)',
+          transformOrigin: 'top left',
+          margin: '0',
+        }
+      });
+      
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Smart-Waste-Dashboard-${period}.pdf`);
+    } catch (error) {
+      console.error("Failed to generate PDF", error);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    if (!data) return;
+    try {
+      const ExcelJS = await import("exceljs");
+      const workbook = new (ExcelJS.Workbook || ExcelJS.default.Workbook)();
+
+      const generateSheet = (wsName: string, titlePeriod: string, dataset: any[]) => {
+        // ExcelJS sometimes fails if worksheet name is longer than 31 chars or has invalid chars
+        const safeName = wsName.replace(/[\\\/\?\*\[\]]/g, '').substring(0, 31);
+        const ws = workbook.addWorksheet(safeName);
+
+        // Title
+        ws.mergeCells("A1:K1");
+        const titleCell = ws.getCell("A1");
+        titleCell.value = `DATA AUDIT SAMPAH KAMPUS (Zero Waste Campus Project)`;
+        titleCell.font = { bold: true, size: 14 };
+        titleCell.alignment = { horizontal: "center" };
+        titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2CC" } };
+
+        ws.mergeCells("A2:K2");
+        const subtitleCell = ws.getCell("A2");
+        subtitleCell.value = `Sampling Date: ${titlePeriod}`;
+        subtitleCell.font = { bold: true, size: 12 };
+        subtitleCell.alignment = { horizontal: "center" };
+        subtitleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2CC" } };
+
+        ws.addRow([]); // empty row 3
+
+        // Headers row 4
+        ws.addRow(["Day", "Date", "Location", "Weight of Hard Plastic (Kg)", "Weight", "Weight", "Residu", "Residu", "Total", "Total"]);
+        ws.addRow(["", "", "", "", "", "Paper (Kg)", "Food Waste (Kg)", "Kg", "Volume (L)", "Waste (Kg)", "Volume (L)"]);
+
+        // Merge header cells vertically
+        ['A', 'B', 'C', 'D', 'E'].forEach(col => {
+          ws.mergeCells(`${col}4:${col}5`);
+        });
+
+        const setHeaderStyle = (cell: any, fgColor: string) => {
+          cell.font = { bold: true };
+          cell.alignment = { horizontal: "center", vertical: "middle" };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fgColor } };
+          cell.border = {
+            top: { style: 'thin' }, left: { style: 'thin' },
+            bottom: { style: 'thin' }, right: { style: 'thin' }
+          };
+        };
+
+        // Header Colors
+        ['A4', 'B4', 'C4', 'D4', 'E4', 'K4', 'K5'].forEach(c => setHeaderStyle(ws.getCell(c), "FFFFFF00")); // Yellow
+        ['F4', 'F5'].forEach(c => setHeaderStyle(ws.getCell(c), "FFCCFFFF")); // Light Blue
+        ['G4', 'G5'].forEach(c => setHeaderStyle(ws.getCell(c), "FFCCFFCC")); // Light Green
+        ['H4', 'H5'].forEach(c => setHeaderStyle(ws.getCell(c), "FFFFCC99")); // Orange
+        ['I4', 'I5', 'J4', 'J5'].forEach(c => setHeaderStyle(ws.getCell(c), "FFFF99CC")); // Pink
+
+        // Data Rows
+        let totalHardPlastic = 0;
+        let totalPaper = 0;
+        let totalFood = 0;
+        let totalResidualKg = 0;
+        let totalResidualVol = 0;
+        let totalWasteKg = 0;
+        let totalWasteVol = 0;
+
+        const dayNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+        dataset.forEach((row) => {
+          const d = new Date(row.date);
+          const dayStr = isNaN(d.getTime()) ? "" : dayNames[d.getDay()];
+
+          const dataRow = ws.addRow([
+            dayStr,
+            row.date,
+            row.location,
+            row.hardPlastic,
+            row.paper,
+            row.food,
+            row.residualKg,
+            row.residualVol,
+            row.totalKg,
+            row.totalVol,
+          ]);
+
+          totalHardPlastic += row.hardPlastic;
+          totalPaper += row.paper;
+          totalFood += row.food;
+          totalResidualKg += row.residualKg;
+          totalResidualVol += row.residualVol;
+          totalWasteKg += row.totalKg;
+          totalWasteVol += row.totalVol;
+
+          const setRowBg = (colNum: number, color: string) => {
+            dataRow.getCell(colNum).fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
+            dataRow.getCell(colNum).border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+          };
+
+          [1, 2, 3, 4, 11].forEach(c => setRowBg(c, "FFFFFF00")); // Yellow
+          [5, 6].forEach(c => setRowBg(c, "FFCCFFFF")); // Blue
+          setRowBg(7, "FFCCFFCC"); // Green
+          setRowBg(8, "FFFFCC99"); // Orange
+          [9, 10].forEach(c => setRowBg(c, "FFFF99CC")); // Pink
+        });
+
+        // Total Row
+        const totalRow = ws.addRow(["TOTAL", "", "", "", totalHardPlastic, totalPaper, totalFood, totalResidualKg, totalResidualVol, totalWasteKg, totalWasteVol]);
+        ws.mergeCells(`A${totalRow.number}:D${totalRow.number}`);
+        
+        for (let i = 1; i <= 11; i++) {
+           const cell = totalRow.getCell(i);
+           cell.font = { bold: true };
+           cell.alignment = { horizontal: "center", vertical: "middle" };
+           cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
+           cell.border = { top: { style: 'thick' }, bottom: { style: 'thick' }, left: { style: 'thin' }, right: { style: 'thin' } };
+        }
+
+        // Column widths
+        ws.getColumn('A').width = 10;
+        ws.getColumn('B').width = 15;
+        ws.getColumn('C').width = 30;
+        ws.getColumn('D').width = 15;
+        ws.getColumn('E').width = 25;
+        ws.getColumn('F').width = 15;
+        ws.getColumn('G').width = 15;
+        ws.getColumn('H').width = 15;
+        ws.getColumn('I').width = 15;
+        ws.getColumn('J').width = 15;
+        ws.getColumn('K').width = 15;
+      };
+
+      generateSheet(`Periode ${formatMonth(period)}`, formatMonth(period), data.rawData);
+      
+      if (data.compareComposition && data.compareRawData && data.compareRawData.length > 0) {
+        generateSheet(`Banding ${formatMonth(data.compareComposition.period)}`, formatMonth(data.compareComposition.period), data.compareRawData);
+      }
+
+      // Generate and download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Raw-Data-Waste-Management-${period}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to generate Excel", error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f8f9fb] font-sans pb-12">
-      <div className="bg-white border-b border-slate-200 px-6 md:px-12 py-4 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-emerald-700 rounded-lg flex items-center justify-center text-white font-bold">
-            <Building2 className="w-5 h-5" />
+      <div className="bg-white border-b border-slate-200 px-6 md:px-12 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky top-0 z-30">
+        <div className="flex items-center justify-between w-full md:w-auto">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-emerald-700 rounded-lg flex items-center justify-center text-white font-bold shrink-0">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <h1 className="text-xl font-bold text-slate-800 leading-tight">
+              Smart Waste Management Dashboard
+            </h1>
           </div>
-          <h1 className="text-xl font-bold text-slate-800">
-            Smart Waste Management Dashboard
-          </h1>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="md:hidden p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+          >
+            <Filter className="w-5 h-5" />
+          </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center border border-slate-200 rounded-lg px-3 py-2 bg-white">
-            <Calendar className="w-4 h-4 text-slate-400 mr-2" />
-            <div className="flex flex-col mr-6 z-20">
+        <div className={`${showFilters ? "flex" : "hidden"} md:flex flex-col md:flex-row flex-wrap items-stretch md:items-center gap-3 w-full md:w-auto mt-4 md:mt-0`}>
+          <div className="flex items-center border border-slate-200 rounded-lg px-3 py-2 bg-white w-full md:w-auto">
+            <Calendar className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+            <div className="flex flex-col mr-2 flex-grow">
               <span className="text-[10px] text-slate-500 font-semibold leading-none mb-1">
                 PERIODE
               </span>
-              <div className="w-44">
-                <Dropdown
+              <div className="w-full md:w-36">
+                <MonthPicker
                   value={period}
                   onChange={setPeriod}
-                  options={periodOptions}
-                  className="!px-0 !py-0 !bg-transparent text-sm shadow-none"
-                  placeholder="Pilih"
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex items-center border border-slate-200 rounded-lg px-3 py-2 bg-white">
-            <Building2 className="w-4 h-4 text-slate-400 mr-2" />
-            <div className="flex flex-col mr-6 z-20">
+          <div className="flex items-center border border-slate-200 rounded-lg px-3 py-2 bg-white w-full md:w-auto">
+            <Calendar className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+            <div className="flex flex-col mr-2 flex-grow">
+              <span className="text-[10px] text-slate-500 font-semibold leading-none mb-1">
+                BANDINGKAN
+              </span>
+              <div className="w-full md:w-36">
+                <MonthPicker
+                  value={comparePeriod}
+                  onChange={setComparePeriod}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center border border-slate-200 rounded-lg px-3 py-2 bg-white w-full md:w-auto">
+            <Building2 className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+            <div className="flex flex-col mr-2 flex-grow">
               <span className="text-[10px] text-slate-500 font-semibold leading-none mb-1">
                 LOKASI
               </span>
-              <div className="w-56">
+              <div className="w-full md:w-44">
                 <Dropdown
                   value={campus}
                   onChange={setCampus}
@@ -253,14 +539,60 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <button className="bg-[#006837] hover:bg-[#005a30] text-white px-4 py-2.5 rounded-lg font-semibold text-sm flex items-center gap-2 transition-colors">
-            <Download className="w-4 h-4" />
-            Download Report
-          </button>
+          <div className="relative w-full md:w-auto" onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+              disabled={isDownloadingPdf}
+              className="bg-[#006837] hover:bg-[#005a30] text-white px-4 py-3 md:py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors w-full md:w-auto"
+            >
+              {isDownloadingPdf ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {isDownloadingPdf ? "Memproses PDF..." : "Download Report"}
+              <ChevronDown className={`w-4 h-4 transition-transform ${showDownloadMenu ? "rotate-180" : ""}`} />
+            </button>
+
+            {showDownloadMenu && (
+              <div className="absolute right-0 mt-2 w-full md:w-56 bg-white border border-slate-100 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] py-2 z-50 overflow-hidden">
+                <button
+                  onClick={() => {
+                    setShowDownloadMenu(false);
+                    handleDownloadPDF();
+                  }}
+                  className="w-full px-4 py-3 text-left flex items-center gap-3 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600 shrink-0">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-700">Format PDF</div>
+                    <div className="text-[10px] text-slate-500">Tampilan dashboard visual</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDownloadMenu(false);
+                    handleDownloadExcel();
+                  }}
+                  className="w-full px-4 py-3 text-left flex items-center gap-3 hover:bg-slate-50 transition-colors border-t border-slate-100"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                    <FileSpreadsheet className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-700">Format Excel</div>
+                    <div className="text-[10px] text-slate-500">Data mentah lengkap</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="max-w-[1200px] mx-auto px-6 md:px-12 mt-8">
+      <div id="dashboard-content" className="max-w-[1200px] mx-auto px-6 md:px-12 mt-8">
         <div className="bg-white rounded-2xl p-6 md:p-8 mb-6 border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -295,6 +627,7 @@ export default function DashboardPage() {
                 value={data.summary.diversionRate.value.toFixed(1)}
                 unit="%"
                 change={data.summary.diversionRate.change}
+                type="diversionRate"
                 icon={<ArrowUpDown className="w-4 h-4" />}
               />
               <SummaryCard
@@ -302,6 +635,7 @@ export default function DashboardPage() {
                 value={data.summary.totalManaged.value.toFixed(2)}
                 unit="kg"
                 change={data.summary.totalManaged.change}
+                type="totalManaged"
                 icon={<ArrowUpDown className="w-4 h-4" />}
               />
               <SummaryCard
@@ -309,6 +643,7 @@ export default function DashboardPage() {
                 value={data.summary.perCapita.value.toFixed(2)}
                 unit="g/org/hari"
                 change={data.summary.perCapita.change}
+                type="perCapita"
                 icon={<Building2 className="w-4 h-4" />}
               />
               <SummaryCard
@@ -316,6 +651,7 @@ export default function DashboardPage() {
                 value={data.summary.residualVolume.value.toFixed(2)}
                 unit="L"
                 change={data.summary.residualVolume.change}
+                type="residualVolume"
                 icon={<ArrowUpDown className="w-4 h-4" />}
               />
             </div>
@@ -449,6 +785,40 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm mb-6 flex flex-col">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="text-lg font-bold text-[#1a1f36]">
+                    Perbandingan Penyusun Diversion Rate
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Komparasi berat sampah (kg) yang didaur ulang antara dua periode
+                  </p>
+                </div>
+                <Info className="w-5 h-5 text-slate-400" />
+              </div>
+              
+              <div className="h-[350px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={comparisonData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dx={-10} />
+                    <Tooltip 
+                      cursor={{fill: '#f8fafc'}}
+                      contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{paddingTop: '20px'}} />
+                    <Bar dataKey={data ? formatMonth(data.compareComposition.period) : "Bulan Lalu"} fill="#94a3b8" radius={[4, 4, 0, 0]} name={`Periode ${data ? formatMonth(data.compareComposition.period) : ''}`} />
+                    <Bar dataKey={data ? formatMonth(period) : "Bulan Ini"} fill="#059669" radius={[4, 4, 0, 0]} name={`Periode ${data ? formatMonth(period) : ''}`} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </>

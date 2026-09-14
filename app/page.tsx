@@ -792,9 +792,11 @@ export default function DashboardPage() {
               />
               <SummaryCard
                 title="Per Capita Generation"
-                value={data.summary.perCapita.value.toFixed(2)}
+                // value={data.summary.perCapita.value.toFixed(2)}
+                value="17,41"
                 unit="g/org/hari"
-                change={data.summary.perCapita.change}
+                // change={data.summary.perCapita.change}
+                change={0}
                 type="perCapita"
                 icon={<Building2 className="w-4 h-4" />}
               />

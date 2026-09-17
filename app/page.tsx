@@ -22,6 +22,8 @@ import {
   Cell,
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -107,6 +109,15 @@ export default function DashboardPage() {
 
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const [showAllLocations, setShowAllLocations] = useState(false);
+  const [expandedLocations, setExpandedLocations] = useState<string[]>([]);
+
+  const toggleLocation = (locationName: string) => {
+    setExpandedLocations((prev) =>
+      prev.includes(locationName)
+        ? prev.filter((name) => name !== locationName)
+        : [...prev, locationName]
+    );
+  };
 
   useEffect(() => {
     const handleClickOutside = () => setShowDownloadMenu(false);
@@ -152,7 +163,7 @@ export default function DashboardPage() {
           setCampus("all");
         }
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const fetchLastUpdate = async () => {
@@ -173,7 +184,7 @@ export default function DashboardPage() {
           );
         }
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const fetchDashboardData = async () => {
@@ -260,31 +271,31 @@ export default function DashboardPage() {
 
   const compositionData = data
     ? [
-        {
-          name: "Plastik",
-          value: data.composition.plastic,
-          color: "#006699",
-          textClass: "text-[#006699]",
-        },
-        {
-          name: "Kertas & Kardus",
-          value: data.composition.paper,
-          color: "#66b3ff",
-          textClass: "text-[#66b3ff]",
-        },
-        {
-          name: "Organik / Pangan",
-          value: data.composition.organic,
-          color: "#66ccff",
-          textClass: "text-[#66ccff]",
-        },
-        {
-          name: "Residu TPA",
-          value: data.composition.residual,
-          color: "#cc0000",
-          textClass: "text-[#cc0000]",
-        },
-      ]
+      {
+        name: "Plastik",
+        value: data.composition.plastic,
+        color: "#006699",
+        textClass: "text-[#006699]",
+      },
+      {
+        name: "Kertas & Kardus",
+        value: data.composition.paper,
+        color: "#66b3ff",
+        textClass: "text-[#66b3ff]",
+      },
+      {
+        name: "Organik / Pangan",
+        value: data.composition.organic,
+        color: "#56b179",
+        textClass: "text-[#56b179]",
+      },
+      {
+        name: "Residu TPA",
+        value: data.composition.residual,
+        color: "#cc0000",
+        textClass: "text-[#cc0000]",
+      },
+    ]
     : [];
 
   const formatMonth = (periodStr: string) => {
@@ -299,33 +310,33 @@ export default function DashboardPage() {
 
   const comparisonData = data
     ? [
-        {
-          name: "Plastik",
-          [formatMonth(data.compareComposition.period)]:
-            data.compareComposition.plastic,
-          [formatMonth(period)]: data.composition.plastic,
-        },
-        {
-          name: "Kertas & Kardus",
-          [formatMonth(data.compareComposition.period)]:
-            data.compareComposition.paper,
-          [formatMonth(period)]: data.composition.paper,
-        },
-        {
-          name: "Organik / Pangan",
-          [formatMonth(data.compareComposition.period)]:
-            data.compareComposition.organic,
-          [formatMonth(period)]: data.composition.organic,
-        },
-        /*
-    ,
-    {
-      name: "Residual",
-      [formatMonth(data.compareComposition.period)]: data.compareComposition.residual,
-      [formatMonth(period)]: data.composition.residual,
-    }
-    */
-      ]
+      {
+        name: "Plastik",
+        [formatMonth(data.compareComposition.period)]:
+          data.compareComposition.plastic,
+        [formatMonth(period)]: data.composition.plastic,
+      },
+      {
+        name: "Kertas & Kardus",
+        [formatMonth(data.compareComposition.period)]:
+          data.compareComposition.paper,
+        [formatMonth(period)]: data.composition.paper,
+      },
+      {
+        name: "Organik / Pangan",
+        [formatMonth(data.compareComposition.period)]:
+          data.compareComposition.organic,
+        [formatMonth(period)]: data.composition.organic,
+      },
+      /*
+  ,
+  {
+    name: "Residual",
+    [formatMonth(data.compareComposition.period)]: data.compareComposition.residual,
+    [formatMonth(period)]: data.composition.residual,
+  }
+  */
+    ]
     : [];
 
   const handleDownloadPDF = async () => {
@@ -616,12 +627,7 @@ export default function DashboardPage() {
       <div className="bg-white border-b border-slate-200 px-6 md:px-12 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky top-0 z-30">
         <div className="flex items-center justify-between w-full md:w-auto">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-emerald-700 rounded-lg flex items-center justify-center text-white font-bold shrink-0">
-              <Building2 className="w-5 h-5" />
-            </div>
-            <h1 className="text-xl font-bold text-slate-800 leading-tight">
-              Smart Waste Management Dashboard
-            </h1>
+            <img src="/logo.png" alt="logo" className="w-auto h-auto max-h-16" />
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -693,7 +699,7 @@ export default function DashboardPage() {
             <button
               onClick={() => setShowDownloadMenu(!showDownloadMenu)}
               disabled={isDownloadingPdf}
-              className="bg-[#006837] hover:bg-[#005a30] text-white px-4 py-3 md:py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors w-full md:w-auto"
+              className="bg-[#006837] hover:bg-[#005a30] text-white px-4 py-3 md:py-2.5 rounded-lg  font-semibold text-sm flex items-center justify-center cursor-pointer gap-2 transition-colors w-full md:w-auto"
             >
               {isDownloadingPdf ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -757,7 +763,7 @@ export default function DashboardPage() {
         className="max-w-[1200px] mx-auto px-6 md:px-12 mt-8"
       >
         <div className="bg-white rounded-2xl p-6 md:p-8 mb-6 border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
+          <div className="max-w-[600px]">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-600"></div>
               <span className="text-emerald-700 font-bold text-sm tracking-wide uppercase">
@@ -767,6 +773,23 @@ export default function DashboardPage() {
             <h2 className="text-2xl font-bold text-[#1a1f36]">
               Ringkasan Analitik Pengelolaan Sampah
             </h2>
+            {(data?.summary?.totalManaged?.value ?? 0) > 0 && (
+              <h5 className="text-sm text-slate-500 mt-1">
+                Bulan {formatMonth(period)} sampah{" "}
+                {data?.summary.totalManaged.value.toFixed(2)} kg dikelola,
+                sebesar {data?.summary.diversionRate.value.toFixed(1)}% berhasil
+                dipilah.{" "}
+                {(data?.summary?.diversionRate?.change ?? 0) > 0
+                  ? "naik"
+                  : "turun"}{" "}
+                {Math.abs(data?.summary?.diversionRate?.change ?? 0).toFixed(1)}
+                % dari {formatMonth(comparePeriod)}. Residu ke TPA{" "}
+                {data?.summary.residualVolume.value.toFixed(2)} L. Lokasi
+                tertinggi timbunan sampah berada di{" "}
+                {data?.topLocations[0]?.name} dengan{" "}
+                {data?.topLocations[0]?.total.toFixed(1)} kg.
+              </h5>
+            )}
           </div>
           <div className="bg-slate-50 text-slate-500 text-xs font-medium px-4 py-2 rounded-full flex items-center gap-2 border border-slate-100">
             <Clock className="w-4 h-4" />
@@ -786,7 +809,7 @@ export default function DashboardPage() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
               <SummaryCard
-                title="Total Waste Diversion Rate"
+                title="Total Sampah Dikelola"
                 value={data.summary.diversionRate.value.toFixed(1)}
                 unit="%"
                 change={data.summary.diversionRate.change}
@@ -794,7 +817,7 @@ export default function DashboardPage() {
                 icon={<ArrowUpDown className="w-4 h-4" />}
               />
               <SummaryCard
-                title="Total Waste Managed"
+                title="Total Timbulan Sampah"
                 value={data.summary.totalManaged.value.toFixed(2)}
                 unit="kg"
                 change={data.summary.totalManaged.change}
@@ -802,7 +825,7 @@ export default function DashboardPage() {
                 icon={<ArrowUpDown className="w-4 h-4" />}
               />
               <SummaryCard
-                title="Per Capita Generation"
+                title="Timbulan Per kapita"
                 value={data.summary.perCapita.value.toFixed(2)}
                 unit="g/org/hari"
                 change={data.summary.perCapita.change}
@@ -810,7 +833,7 @@ export default function DashboardPage() {
                 icon={<Building2 className="w-4 h-4" />}
               />
               <SummaryCard
-                title="Residual Waste Volume"
+                title="Jumlah Residu Ke TPA"
                 value={data.summary.residualVolume.value.toFixed(2)}
                 unit="L"
                 change={data.summary.residualVolume.change}
@@ -824,7 +847,7 @@ export default function DashboardPage() {
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <h3 className="text-lg font-bold text-[#1a1f36]">
-                      Komposisi Aliran Sampah
+                      Komposisi Sampah
                     </h3>
                     <p className="text-sm text-slate-500 mt-1">
                       Distribusi pemilahan material daur ulang vs residu
@@ -972,10 +995,77 @@ export default function DashboardPage() {
                             style={{ width: `${loc.percentage}%` }}
                           ></div>
                         </div>
-                        <div className="text-[10px] text-slate-400 font-medium">
+                        <div className="text-[10px] text-slate-400 font-medium flex flex-row justify-between">
                           {loc.percentage.toFixed(1)}% dari total sampah di
                           kampus 3
+                          <div
+                            className="text-emerald-700 flex flex-row items-center cursor-pointer hover:text-emerald-800 transition-colors"
+                            onClick={() => toggleLocation(loc.name)}
+                          >
+                            Detail sampah
+                            <ChevronDown className={`w-3 h-3 ml-1 text-emerald-700 transition-transform ${expandedLocations.includes(loc.name) ? "rotate-180" : ""}`} />
+                          </div>
                         </div>
+                        {expandedLocations.includes(loc.name) && (() => {
+                          const locData = data.rawData.filter((d) => d.location === loc.name);
+                          const totalPlastic = locData.reduce((sum, d) => sum + d.hardPlastic, 0);
+                          const totalPaper = locData.reduce((sum, d) => sum + d.paper, 0);
+                          const totalFood = locData.reduce((sum, d) => sum + d.food, 0);
+                          const totalResidu = locData.reduce((sum, d) => sum + d.residualKg, 0);
+                          const totalAll = totalPlastic + totalPaper + totalFood + totalResidu;
+
+                          const plasticPct = totalAll > 0 ? (totalPlastic / totalAll) * 100 : 0;
+                          const paperPct = totalAll > 0 ? (totalPaper / totalAll) * 100 : 0;
+                          const foodPct = totalAll > 0 ? (totalFood / totalAll) * 100 : 0;
+                          const residuPct = totalAll > 0 ? (totalResidu / totalAll) * 100 : 0;
+
+                          return (
+                            <div className="mt-3 pt-3 border-t border-slate-300 animate-fade-in-slide flex flex-col gap-3">
+                              <h4 className="text-xs font-bold text-slate-700 mb-1">Proporsi Jenis Sampah (kg) di {loc.name}</h4>
+
+                              <div>
+                                <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                                  <span>Plastik</span>
+                                  <span className="font-bold text-[#006699]">{totalPlastic.toFixed(1)} kg ({plasticPct.toFixed(1)}%)</span>
+                                </div>
+                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                  <div className="bg-[#006699] h-full rounded-full transition-all duration-500" style={{ width: `${plasticPct}%` }}></div>
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                                  <span>Kertas/Kardus</span>
+                                  <span className="font-bold text-[#66b3ff]">{totalPaper.toFixed(1)} kg ({paperPct.toFixed(1)}%)</span>
+                                </div>
+                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                  <div className="bg-[#66b3ff] h-full rounded-full transition-all duration-500" style={{ width: `${paperPct}%` }}></div>
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                                  <span>Organik (Makanan)</span>
+                                  <span className="font-bold text-[#66ccff]">{totalFood.toFixed(1)} kg ({foodPct.toFixed(1)}%)</span>
+                                </div>
+                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                  <div className="bg-[#66ccff] h-full rounded-full transition-all duration-500" style={{ width: `${foodPct}%` }}></div>
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                                  <span>Residu</span>
+                                  <span className="font-bold text-[#cc0000]">{totalResidu.toFixed(1)} kg ({residuPct.toFixed(1)}%)</span>
+                                </div>
+                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                  <div className="bg-[#cc0000] h-full rounded-full transition-all duration-500" style={{ width: `${residuPct}%` }}></div>
+                                </div>
+                              </div>
+
+                            </div>
+                          );
+                        })()}
                       </div>
                     ))}
 

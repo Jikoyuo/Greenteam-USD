@@ -26,7 +26,9 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const period = searchParams.get("period") || ""; // e.g. "2026-05"
     const comparePeriodParam = searchParams.get("compare_period");
-    const campusId = parseInt(searchParams.get("campus_id") || "1");
+    const campusIdParam = searchParams.get("campus_id");
+    const isAllCampuses = campusIdParam === "all";
+    const campusId = isAllCampuses ? null : parseInt(campusIdParam || "1");
 
     if (!period) {
       return NextResponse.json(
@@ -39,7 +41,7 @@ export async function GET(req: NextRequest) {
     const daysInMonth = getDaysInMonth(period);
     const POPULATION_ESTIMATE = 1000;
 
-    const { data: auditData, error } = await supabase
+    let auditQuery = supabase
       .from("DataAudit")
       .select(
         `
@@ -47,29 +49,43 @@ export async function GET(req: NextRequest) {
         Locations!inner(id_campus, location_name)
       `,
       )
-      .eq("Locations.id_campus", campusId)
       .in("period", [period, prevPeriod])
       .eq("is_active", true);
+
+    if (!isAllCampuses) {
+      auditQuery = auditQuery.eq("Locations.id_campus", campusId);
+    }
+
+    const { data: auditData, error } = await auditQuery;
 
     if (error) {
       console.error("Dashboard Supabase error:", error);
       throw error;
     }
 
-    const { data: metaData } = await supabase
+    let metaQuery = supabase
       .from("AuditMetadata")
       .select("*")
-      .eq("id_campus", campusId)
       .in("period", [period, prevPeriod]);
 
-    const currMeta = metaData?.find(m => m.period === period);
-    const prevMeta = metaData?.find(m => m.period === prevPeriod);
+    if (!isAllCampuses) {
+      metaQuery = metaQuery.eq("id_campus", campusId);
+    }
 
-    const currPop = currMeta?.population || POPULATION_ESTIMATE;
-    const currDays = currMeta?.sampling_days || daysInMonth;
+    const { data: metaData } = await metaQuery;
 
-    const prevPop = prevMeta?.population || POPULATION_ESTIMATE;
-    const prevDays = prevMeta?.sampling_days || getDaysInMonth(prevPeriod);
+    const currMeta = metaData?.filter((m) => m.period === period) || [];
+    const prevMeta = metaData?.filter((m) => m.period === prevPeriod) || [];
+
+    const currPop = currMeta.length > 0 
+      ? currMeta.reduce((sum, m) => sum + (m.population || 0), 0)
+      : POPULATION_ESTIMATE;
+    const currDays = currMeta.length > 0 ? (currMeta[0].sampling_days || daysInMonth) : daysInMonth;
+
+    const prevPop = prevMeta.length > 0
+      ? prevMeta.reduce((sum, m) => sum + (m.population || 0), 0)
+      : POPULATION_ESTIMATE;
+    const prevDays = prevMeta.length > 0 ? (prevMeta[0].sampling_days || getDaysInMonth(prevPeriod)) : getDaysInMonth(prevPeriod);
 
     const currentData = auditData.filter((d) => d.period === period);
     const prevData = auditData.filter((d) => d.period === prevPeriod);

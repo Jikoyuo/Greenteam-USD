@@ -93,7 +93,7 @@ export default function DashboardPage() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
   const [comparePeriod, setComparePeriod] = useState("");
-  const [campus, setCampus] = useState("Kampus 3 USD");
+  const [campus, setCampus] = useState("all");
   const [campuses, setCampuses] = useState<
     { id_campus: number; campus_name: string }[]
   >([]);
@@ -149,7 +149,7 @@ export default function DashboardPage() {
         const json = await res.json();
         setCampuses(json);
         if (json.length > 0) {
-          setCampus(json[0].campus_name);
+          setCampus("all");
         }
       }
     } catch (e) {}
@@ -180,7 +180,12 @@ export default function DashboardPage() {
     setLoading(true);
     try {
       const selectedCampus = campuses.find((c) => c.campus_name === campus);
-      const campusId = selectedCampus ? selectedCampus.id_campus : 1;
+      const campusId =
+        campus === "all"
+          ? "all"
+          : selectedCampus
+            ? selectedCampus.id_campus
+            : 1;
       const compareQuery = comparePeriod
         ? `&compare_period=${comparePeriod}`
         : "";
@@ -666,10 +671,13 @@ export default function DashboardPage() {
                 <Dropdown
                   value={campus}
                   onChange={setCampus}
-                  options={campuses.map((c) => ({
-                    value: c.campus_name,
-                    label: c.campus_name,
-                  }))}
+                  options={[
+                    { value: "all", label: "Seluruh Lokasi" },
+                    ...campuses.map((c) => ({
+                      value: c.campus_name,
+                      label: c.campus_name,
+                    })),
+                  ]}
                   className="text-sm shadow-none"
                   buttonClassName="px-3 py-2 rounded-lg border border-slate-200 bg-white"
                   placeholder="Memuat..."
@@ -822,7 +830,23 @@ export default function DashboardPage() {
                       Distribusi pemilahan material daur ulang vs residu
                     </p>
                   </div>
-                  <Info className="w-5 h-5 text-slate-400" />
+                  <div className="relative group cursor-help">
+                    <Info className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                    <div className="absolute right-0 top-8 w-64 p-3 bg-slate-100 border border-slate-200 text-slate-600 text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl pointer-events-none">
+                      <p className="font-semibold mb-1 text-emerald-700">
+                        Tujuan Grafik
+                      </p>
+                      <p className="leading-relaxed">
+                        Grafik ini menyajikan persentase dari setiap jenis
+                        sampah yang terkumpul (Plastik, Kertas, Sisa Makanan,
+                        dan Residu). Tujuannya adalah untuk mengetahui jenis
+                        material apa yang paling mendominasi, sehingga kita
+                        dapat merancang strategi pengolahan atau kampanye 
+                        pengurangan sampah yang lebih spesifik dan tepat sasaran.
+                      </p>
+                      <div className="absolute -top-1.5 right-1.5 w-3 h-3 bg-slate-100 border-t border-l border-slate-200 rotate-45"></div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="relative h-[250px] w-full flex-grow">
@@ -986,7 +1010,22 @@ export default function DashboardPage() {
                     periode
                   </p>
                 </div>
-                <Info className="w-5 h-5 text-slate-400" />
+                <div className="relative group cursor-help">
+                  <Info className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                  <div className="absolute right-0 top-8 w-64 p-3 bg-slate-100 border border-slate-200 text-slate-600 text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl pointer-events-none">
+                    <p className="font-semibold mb-1 text-emerald-700">
+                      Tujuan Grafik
+                    </p>
+                    <p className="leading-relaxed">
+                      Grafik ini membandingkan volume sampah yang dapat didaur
+                      ulang (seperti Plastik, Kertas, dan Sisa Makanan) antara
+                      dua periode pilihan Anda. Tujuannya adalah untuk
+                      mengevaluasi apakah ada peningkatan partisipasi pemilahan
+                      sampah dan efektivitas dari Diversion Rate.
+                    </p>
+                    <div className="absolute -top-1.5 right-1.5 w-3 h-3 bg-slate-100 border-t border-l border-slate-200 rotate-45"></div>
+                  </div>
+                </div>
               </div>
 
               <div className="h-[350px] w-full">

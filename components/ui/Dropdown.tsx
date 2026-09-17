@@ -16,6 +16,7 @@ interface DropdownProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  buttonClassName?: string;
 }
 
 export function Dropdown({
@@ -26,6 +27,7 @@ export function Dropdown({
   placeholder = "Pilih",
   disabled = false,
   className = "",
+  buttonClassName = "bg-[#f4f6fb] px-4 py-3.5 rounded-xl",
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -50,7 +52,7 @@ export function Dropdown({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between bg-[#f4f6fb] px-4 py-3.5 rounded-xl transition-all ${
+        className={`w-full flex items-center justify-between transition-all ${buttonClassName} ${
           disabled
             ? "cursor-not-allowed opacity-80"
             : "cursor-pointer hover:bg-[#ebedf4] active:bg-[#e4e8f1]"

@@ -662,7 +662,7 @@ export default function DashboardPage() {
               <span className="text-[10px] text-slate-500 font-semibold leading-none mb-1">
                 LOKASI
               </span>
-              <div className="w-full md:w-44">
+              <div className="w-full md:w-36">
                 <Dropdown
                   value={campus}
                   onChange={setCampus}
@@ -670,7 +670,8 @@ export default function DashboardPage() {
                     value: c.campus_name,
                     label: c.campus_name,
                   }))}
-                  className="!px-0 !py-0 !bg-transparent text-sm shadow-none"
+                  className="text-sm shadow-none"
+                  buttonClassName="px-3 py-2 rounded-lg border border-slate-200 bg-white"
                   placeholder="Memuat..."
                 />
               </div>

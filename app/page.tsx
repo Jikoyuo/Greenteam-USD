@@ -105,7 +105,9 @@ export default function DashboardPage() {
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
-  // Close download menu when clicking outside
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  const [showAllLocations, setShowAllLocations] = useState(false);
+
   useEffect(() => {
     const handleClickOutside = () => setShowDownloadMenu(false);
     if (showDownloadMenu) {
@@ -890,46 +892,67 @@ export default function DashboardPage() {
                       Diurutkan berdasarkan akumulasi volume sampah terkumpul
                     </p>
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-slate-500">
-                    <ArrowUpDown className="w-3 h-3" /> Urutan: Tertinggi ke
-                    Terendah
-                  </div>
+                  <button
+                    onClick={() =>
+                      setSortOrder(sortOrder === "desc" ? "asc" : "desc")
+                    }
+                    className="flex items-center gap-1 text-xs text-slate-500 cursor-pointer hover:text-slate-700 transition-colors"
+                  >
+                    <ArrowUpDown className="w-3 h-3" /> Urutan:{" "}
+                    {sortOrder === "desc"
+                      ? "Tertinggi ke Terendah"
+                      : "Terendah ke Tertinggi"}
+                  </button>
                 </div>
 
-                <div className="flex flex-col gap-4 flex-grow justify-center">
-                  {data.topLocations.map((loc, i) => (
-                    <div
-                      key={i}
-                      className="bg-slate-50/50 rounded-xl p-3 border border-slate-100"
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="flex items-center gap-3">
-                          <div className="w-6 h-6 rounded bg-[#e6f0ff] text-[#006699] flex items-center justify-center text-xs font-bold">
-                            {i + 1}
+                <div
+                  className="flex flex-col gap-4 flex-grow custom-scrollbar overflow-y-auto"
+                  style={{
+                    maxHeight: "440px",
+                    scrollbarGutter: "stable",
+                  }}
+                >
+                  {data.topLocations
+                    .sort((a, b) =>
+                      sortOrder === "desc"
+                        ? b.total - a.total
+                        : a.total - b.total,
+                    )
+                    .slice(0, showAllLocations ? data.topLocations.length : 5)
+                    .map((loc, i) => (
+                      <div
+                        key={loc.name}
+                        className="bg-slate-50/50 rounded-xl p-3 border border-slate-100 animate-fade-in-slide"
+                        style={{ animationFillMode: "both" }}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center gap-3">
+                            <div className="w-6 h-6 rounded bg-[#e6f0ff] text-[#006699] flex items-center justify-center text-xs font-bold">
+                              {i + 1}
+                            </div>
+                            <span className="font-bold text-slate-800 text-sm">
+                              {loc.name}
+                            </span>
                           </div>
-                          <span className="font-bold text-slate-800 text-sm">
-                            {loc.name}
-                          </span>
+                          <div className="text-xs font-medium text-slate-500">
+                            Dominan: {loc.dominantName}{" "}
+                            <span className="font-bold text-slate-800 ml-1 text-sm">
+                              {loc.total.toFixed(1)} kg
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-xs font-medium text-slate-500">
-                          Dominan: {loc.dominantName}{" "}
-                          <span className="font-bold text-slate-800 ml-1 text-sm">
-                            {loc.total.toFixed(1)} kg
-                          </span>
+                        <div className="relative h-2 w-full bg-slate-200 rounded-full overflow-hidden mb-1">
+                          <div
+                            className={`absolute top-0 left-0 h-full ${loc.dominantColorClass} rounded-full`}
+                            style={{ width: `${loc.percentage}%` }}
+                          ></div>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-medium">
+                          {loc.percentage.toFixed(1)}% dari total sampah di
+                          kampus 3
                         </div>
                       </div>
-                      <div className="relative h-2 w-full bg-slate-200 rounded-full overflow-hidden mb-1">
-                        <div
-                          className={`absolute top-0 left-0 h-full ${loc.dominantColorClass} rounded-full`}
-                          style={{ width: `${loc.percentage}%` }}
-                        ></div>
-                      </div>
-                      <div className="text-[10px] text-slate-400 font-medium">
-                        {loc.percentage.toFixed(1)}% dari total sampah di kampus
-                        3
-                      </div>
-                    </div>
-                  ))}
+                    ))}
 
                   {data.topLocations.length === 0 && (
                     <div className="text-center text-slate-400 py-10">
@@ -937,6 +960,17 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
+
+                {data.topLocations.length > 5 && (
+                  <button
+                    onClick={() => setShowAllLocations(!showAllLocations)}
+                    className="mt-4 w-full py-2 text-sm cursor-pointer font-semibold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-100"
+                  >
+                    {showAllLocations
+                      ? "Tampilkan lebih sedikit"
+                      : "Lihat seluruh lokasi persebaran sampah"}
+                  </button>
+                )}
               </div>
             </div>
 

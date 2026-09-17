@@ -167,9 +167,8 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Sort by total waste descending and take top 5
+    // Sort by total waste descending
     topLocationsArray.sort((a, b) => b.total - a.total);
-    const top5Locations = topLocationsArray.slice(0, 5);
 
     // --- RESPONSE PAYLOAD ---
     return NextResponse.json({
@@ -194,7 +193,7 @@ export async function GET(req: NextRequest) {
         residual: prevResidual,
         total: prevTotalManaged,
       },
-      topLocations: top5Locations,
+      topLocations: topLocationsArray,
       rawData: currentData.map((row) => ({
         date: row.audit_date,
         location: row.Locations.location_name,

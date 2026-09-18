@@ -1046,10 +1046,10 @@ export default function DashboardPage() {
                               <div>
                                 <div className="flex justify-between text-[10px] text-slate-500 mb-1">
                                   <span>Organik (Makanan)</span>
-                                  <span className="font-bold text-[#66ccff]">{totalFood.toFixed(1)} kg ({foodPct.toFixed(1)}%)</span>
+                                  <span className="font-bold text-[#56b179]">{totalFood.toFixed(1)} kg ({foodPct.toFixed(1)}%)</span>
                                 </div>
                                 <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                                  <div className="bg-[#66ccff] h-full rounded-full transition-all duration-500" style={{ width: `${foodPct}%` }}></div>
+                                  <div className="bg-[#56b179] h-full rounded-full transition-all duration-500" style={{ width: `${foodPct}%` }}></div>
                                 </div>
                               </div>
 
